@@ -60,7 +60,29 @@ esp_err_t config_mgr_save(const focuslock_config_t *cfg) {
 }
 
 esp_err_t config_mgr_load_stats(focuslock_stats_t *stats) {
-    memset(stats, 0, sizeof(focuslock_stats_t));
-    return ESP_OK; 
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READONLY, &handle);
+    if (err != ESP_OK) {
+        memset(stats, 0, sizeof(focuslock_stats_t));
+        return ESP_OK;
+    }
+    size_t required_size = sizeof(focuslock_stats_t);
+    err = nvs_get_blob(handle, "stats", stats, &required_size);
+    if (err != ESP_OK) {
+        memset(stats, 0, sizeof(focuslock_stats_t));
+    }
+    nvs_close(handle);
+    return ESP_OK;
 }
-esp_err_t config_mgr_save_stats(const focuslock_stats_t *stats) { return ESP_OK; }
+
+esp_err_t config_mgr_save_stats(const focuslock_stats_t *stats) {
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle);
+    if (err != ESP_OK) return err;
+    err = nvs_set_blob(handle, "stats", stats, sizeof(focuslock_stats_t));
+    if (err == ESP_OK) {
+        err = nvs_commit(handle);
+    }
+    nvs_close(handle);
+    return err;
+}
