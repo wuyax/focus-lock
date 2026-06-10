@@ -5,6 +5,7 @@
 #include "config_mgr.h"
 #include "pomodoro_engine.h"
 #include "rgb_service.h"
+#include "button_service.h"
 
 static const char *TAG = "main";
 focuslock_config_t global_config;
@@ -23,6 +24,7 @@ void app_main(void)
              
     pomodoro_engine_init();
     rgb_service_init(status_queue);
+    button_service_init();
              
     while (1) {
         vTaskDelay(1000 / portTICK_PERIOD_MS);
