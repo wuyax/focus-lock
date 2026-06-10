@@ -11,6 +11,8 @@ QueueHandle_t status_queue;
 static QueueHandle_t event_queue;
 static engine_status_t current_status;
 static focus_state_t pre_admin_state = STATE_WORK;
+static uint32_t work_sec_counter = 0;
+static uint32_t rest_sec_counter = 0;
 
 static void update_status_and_notify(void) {
     if (status_queue) {
@@ -49,6 +51,22 @@ static void transition_to(focus_state_t new_state) {
 static void handle_tick(void) {
     if (current_status.state == STATE_ADMIN) return;
     
+    if (current_status.state == STATE_WORK) {
+        work_sec_counter++;
+        if (work_sec_counter >= 60) {
+            global_stats.total_work_min++;
+            work_sec_counter = 0;
+            config_mgr_save_stats(&global_stats);
+        }
+    } else if (current_status.state == STATE_REST) {
+        rest_sec_counter++;
+        if (rest_sec_counter >= 60) {
+            global_stats.total_rest_min++;
+            rest_sec_counter = 0;
+            config_mgr_save_stats(&global_stats);
+        }
+    }
+
     if (current_status.remaining_sec > 0) {
         current_status.remaining_sec--;
         update_status_and_notify();
