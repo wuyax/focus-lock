@@ -3,6 +3,7 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "config_mgr.h"
+#include "pomodoro_engine.h"
 
 static const char *TAG = "main";
 focuslock_config_t global_config;
@@ -18,6 +19,8 @@ void app_main(void)
     
     ESP_LOGI(TAG, "Config loaded. Work: %lu min, Rest: %lu min", 
              global_config.work_time_min, global_config.rest_time_min);
+             
+    pomodoro_engine_init();
              
     while (1) {
         vTaskDelay(1000 / portTICK_PERIOD_MS);
