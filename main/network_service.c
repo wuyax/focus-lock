@@ -7,6 +7,7 @@
 #include "esp_netif.h"
 #include "network_service.h"
 #include "pomodoro_engine.h"
+#include "dns_server.h"
 
 static const char *TAG = "network_service";
 static bool wifi_started = false;
@@ -35,12 +36,14 @@ static void wifi_init_softap(void)
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
+    dns_server_start();
 
     ESP_LOGI(TAG, "wifi_init_softap finished. SSID:FocusLock_Config");
 }
 
 static void wifi_stop_softap(void)
 {
+    dns_server_stop();
     ESP_ERROR_CHECK(esp_wifi_stop());
     ESP_ERROR_CHECK(esp_wifi_deinit());
     ESP_LOGI(TAG, "wifi_stop_softap finished.");
