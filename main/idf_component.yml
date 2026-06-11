@@ -1,5 +1,6 @@
 dependencies:
-  espressif/led_strip: "^3.0.0"
-  espressif/esp_tinyusb: "^1.5.0"
-  nixy4/u8g2: "^0.1.4"
-  idf: ">=5.0"
+  espressif/led_strip: ^3.0.0
+  espressif/esp_tinyusb: ^1.5.0
+  nixy4/u8g2: ^0.1.4
+  idf: '>=5.0'
+  espressif/cjson: ^1.7.18

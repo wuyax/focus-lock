@@ -12,6 +12,23 @@ static httpd_handle_t server = NULL;
 extern focuslock_config_t global_config;
 extern focuslock_stats_t global_stats;
 
+extern const uint8_t web_ui_start[] asm("_binary_web_ui_html_start");
+extern const uint8_t web_ui_end[]   asm("_binary_web_ui_html_end");
+
+static esp_err_t index_get_handler(httpd_req_t *req) {
+    httpd_resp_set_type(req, "text/html");
+    httpd_resp_send(req, (const char *)web_ui_start, web_ui_end - web_ui_start);
+    return ESP_OK;
+}
+
+static esp_err_t http_404_error_handler(httpd_req_t *req, httpd_err_code_t err) {
+    // Redirect to index for captive portal experience
+    httpd_resp_set_status(req, "302 Found");
+    httpd_resp_set_hdr(req, "Location", "/");
+    httpd_resp_send(req, NULL, 0);
+    return ESP_OK;
+}
+
 static esp_err_t config_get_handler(httpd_req_t *req) {
     cJSON *root = cJSON_CreateObject();
     cJSON_AddNumberToObject(root, "work_time_min", global_config.work_time_min);
@@ -96,6 +113,14 @@ void web_server_start(void) {
 
     ESP_LOGI(TAG, "Starting server on port: '%d'", config.server_port);
     if (httpd_start(&server, &config) == ESP_OK) {
+        httpd_uri_t index_get = {
+            .uri       = "/",
+            .method    = HTTP_GET,
+            .handler   = index_get_handler,
+            .user_ctx  = NULL
+        };
+        httpd_register_uri_handler(server, &index_get);
+
         httpd_uri_t config_get = {
             .uri       = "/api/config",
             .method    = HTTP_GET,
@@ -119,6 +144,8 @@ void web_server_start(void) {
             .user_ctx  = NULL
         };
         httpd_register_uri_handler(server, &stats_get);
+
+        httpd_register_err_handler(server, HTTPD_404_NOT_FOUND, http_404_error_handler);
     } else {
         ESP_LOGE(TAG, "Error starting server!");
     }
