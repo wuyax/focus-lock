@@ -1,69 +1,88 @@
-| Supported Targets | ESP32 | ESP32-C2 | ESP32-C3 | ESP32-C5 | ESP32-C6 | ESP32-C61 | ESP32-H2 | ESP32-H21 | ESP32-H4 | ESP32-P4 | ESP32-S2 | ESP32-S3 |
-| ----------------- | ----- | -------- | -------- | -------- | -------- | --------- | -------- | --------- | -------- | -------- | -------- | -------- |
+# FocusLock —— 硬件级番茄时钟 🍅
 
-# Blink Example
+> 用硬件约束代替意志力，通过物理设备帮助用户建立健康的工作-休息节奏。
 
-(See the README.md file in the upper level 'examples' directory for more information about examples.)
+FocusLock 是一款基于 **ESP32-S3** 开发的桌面生产力硬件。它不仅仅是一个计时器，而是能够在你的专注时间结束时，**自动向电脑发送组合键（如 Win+L 或 Cmd+L）强制锁屏**，强制你离开屏幕休息，从而保护视力和颈椎。
 
-This example demonstrates how to blink a LED by using the GPIO driver or using the [led_strip](https://components.espressif.com/component/espressif/led_strip) library if the LED is addressable e.g. [WS2812](https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf). The `led_strip` library is installed via [component manager](main/idf_component.yml).
+## ✨ 核心特性
 
-## How to Use Example
+- 🔒 **物理级防沉迷**：工作结束时通过 USB HID 模拟键盘强制电脑锁屏。
+- 🚥 **RGB 状态指引**：通过板载 WS2812 呈现 工作(绿)、提醒(黄呼吸)、休息(红)、暂停/配置(蓝) 四种直观状态。
+- 📱 **按需 Web 配置**：内置 Captive Portal (强制门户)。无需安装 APP，只需长按进入 Admin 模式，手机连上 Wi-Fi 即可在浏览器中修改参数。
+- 💾 **数据持久化**：使用 ESP-IDF NVS 存储配置与每日专注统计数据。
+- 📺 **OLED 屏幕支持**：支持 I2C SSD1306 屏幕（0.96寸），实时显示倒计时进度环（支持无屏幕盲操模式）。
+- ⌨️ **自定义快捷键**：支持在 Web 后台配置 macOS/Windows/Linux 的任意多键组合锁屏指令。
 
-Before project configuration and build, be sure to set the correct chip target using `idf.py set-target <chip_name>`.
+---
 
-### Hardware Required
+## 🛠 硬件需求与连接
 
-* A development board with normal LED or addressable LED on-board (e.g., ESP32-S3-DevKitC, ESP32-C6-DevKitC etc.)
-* A USB cable for Power supply and programming
+**主控板**：ESP32-S3 开发板 (推荐) / ESP32-C3
+**其他外设**：(可选) 0.96寸 I2C OLED 屏幕、额外按钮
 
-See [Development Boards](https://www.espressif.com/en/products/devkits) for more information about it.
+| 外设 / 接口 | ESP32 引脚 | 说明 |
+| :--- | :--- | :--- |
+| **主按钮 (BOOT)** | `GPIO 0` | 短按：暂停/恢复。双击：跳过当前阶段。长按 5 秒：进入后台配置。 |
+| **RGB 灯 (WS2812)**| `GPIO 48`| ESP32-S3 开发板通常自带。 |
+| **OLED SDA** | `GPIO 1` | (可选) 接屏幕 SDA，如果没有接屏幕程序会自动降级运行。 |
+| **OLED SCL** | `GPIO 2` | (可选) 接屏幕 SCL |
 
-### Configure the Project
+> **⚠️ 关键提示：USB 接口的选择**
+> 你的 ESP32-S3 开发板通常有两个 USB 接口。
+> - **烧录与调试**：可以使用标有 `UART` 的接口，也可以使用 `USB` 接口。
+> - **日常使用 (锁屏功能)**：**必须** 使用标有 **`USB` (或 Native USB)** 的接口连接电脑。只有这个接口才能模拟键盘 (HID) 发送锁屏指令！
 
-Open the project configuration menu (`idf.py menuconfig`).
+---
 
-In the `Example Configuration` menu:
+## 🚀 编译与烧录指南
 
-* Select the LED type in the `Blink LED type` option.
-  * Use `GPIO` for regular LED
-  * Use `LED strip` for addressable LED
-* If the LED type is `LED strip`, select the backend peripheral
-  * `RMT` is only available for ESP targets with RMT peripheral supported
-  * `SPI` is available for all ESP targets
-* Set the GPIO number used for the signal in the `Blink GPIO number` option.
-* Set the blinking period in the `Blink period in ms` option.
+本项目基于 **ESP-IDF v6.0+** 开发。
 
-### Build and Flash
-
-Run `idf.py -p PORT flash monitor` to build, flash and monitor the project.
-
-(To exit the serial monitor, type ``Ctrl-]``.)
-
-See the [Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/index.html) for full steps to configure and use ESP-IDF to build projects.
-
-## Example Output
-
-As you run the example, you will see the LED blinking, according to the previously defined period. For the addressable LED, you can also change the LED color by setting the `led_strip_set_pixel(led_strip, 0, 16, 16, 16);` (LED Strip, Pixel Number, Red, Green, Blue) with values from 0 to 255 in the [source file](main/blink_example_main.c).
-
-```text
-I (315) example: Example configured to blink addressable LED!
-I (325) example: Turning the LED OFF!
-I (1325) example: Turning the LED ON!
-I (2325) example: Turning the LED OFF!
-I (3325) example: Turning the LED ON!
-I (4325) example: Turning the LED OFF!
-I (5325) example: Turning the LED ON!
-I (6325) example: Turning the LED OFF!
-I (7325) example: Turning the LED ON!
-I (8325) example: Turning the LED OFF!
+### 1. 准备环境
+确保你已经安装了 ESP-IDF，并在终端中激活它：
+```bash
+# 路径请替换为你本机的实际安装路径
+source ~/esp/esp-idf/export.sh
 ```
 
-Note: The color order could be different according to the LED model.
+### 2. 编译与烧录
+将开发板的 `UART` 或 `USB` 接口连接到电脑，然后执行：
+```bash
+idf.py build flash monitor
+```
+*(注意：在 macOS 上，请确保使用 `/dev/cu.*` 而不是 `/dev/tty.*`)*
 
-The pixel number indicates the pixel position in the LED strip. For a single LED, use 0.
+---
 
-## Troubleshooting
+## 🎮 使用说明
 
-* If the LED isn't blinking, check the GPIO or the LED type selection in the `Example Configuration` menu.
+### 日常工作流
+1. **上电开机**：插入 USB，灯光变绿，进入 45 分钟倒计时工作模式。
+2. **临时离开**：短按 `BOOT` 键，灯光变蓝，进入最多 5 分钟的暂停状态。回来后短按恢复。
+3. **即将休息**：休息前 30 秒，灯光变为**黄色呼吸**，屏幕出现硕大的秒数倒数，提醒你保存代码。
+4. **强制锁屏**：时间到，灯光变红，你的电脑会**瞬间被 FocusLock 锁定**！享受 5 分钟的走动时间吧。
+5. **恢复工作**：5 分钟后，设备重新变绿，你可以解锁电脑继续下一个番茄钟。
 
-For any technical queries, please open an [issue](https://github.com/espressif/esp-idf/issues) on GitHub. We will get back to you soon.
+### ⚙️ 进入 Web 配置后台 (修改锁屏快捷键)
+想要修改工作时长或设置你自己的专属锁屏键（如 `Ctrl+Cmd+Q`）？
+1. **长按** `BOOT` 键 5 秒，直到灯光变成**蓝色**。
+2. 拿出手机或电脑，搜索并连接名为 **`FocusLock_Config`** 的 Wi-Fi (无密码)。
+3. 你的设备会自动弹出一个配置网页 (如果没有弹出，请打开浏览器访问 `192.168.4.1`)。
+4. 在网页上修改参数，点击保存。
+5. 再次**长按** `BOOT` 键 5 秒退出配置模式，Wi-Fi 将自动关闭。
+
+---
+
+## 🏗 系统架构
+
+系统采用 FreeRTOS 多任务设计，完全解耦。
+- `pomodoro_engine`：核心状态机，处理时间流逝与事件响应。
+- `usb_hid_service`：基于 `esp_tinyusb`，解析配置并发送键盘指令。
+- `oled_service`：基于 `u8g2` 库，处理 UI 渲染。具备自动 I2C 探测能力，防崩溃。
+- `network_service`：管理 AP 启停、DNS 强制门户、以及基于 HTTP 的 RESTful API。
+- `config_mgr`：管理参数和统计数据的持久化。
+
+---
+
+## 📜 License
+MIT License
