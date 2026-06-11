@@ -9,8 +9,8 @@ This file provides the necessary context for AI agents to develop, build, and de
 
 ## 2. Mandatory Commands
 Before running any `idf.py` command, you **MUST** source the environment.
-- **Activation Command**: `source /Users/wuyax/.espressif/v6.0.1/esp-idf/export.sh`
-- **Build & Flash Example**: `source /Users/wuyax/.espressif/v6.0.1/esp-idf/export.sh && idf.py -p /dev/cu.usbmodem21113201 build flash monitor`
+- **Activation Command**: `source ~/.espressif/v6.0.1/esp-idf/export.sh`
+- **Build & Flash Example**: `source ~/.espressif/v6.0.1/esp-idf/export.sh && idf.py -p /dev/cu.usbmodem21113201 build flash monitor`
 
 ## 3. macOS Serial Port Guidelines
 - **ALWAYS** use `/dev/cu.*` instead of `/dev/tty.*`.
