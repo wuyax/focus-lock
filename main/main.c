@@ -7,6 +7,9 @@
 #include "rgb_service.h"
 #include "button_service.h"
 #include "usb_hid_service.h"
+#include "shortcut_parser.h"
+
+extern void test_shortcut_parser();
 
 static const char *TAG = "main";
 focuslock_config_t global_config;
@@ -22,6 +25,8 @@ void app_main(void)
     
     ESP_LOGI(TAG, "Config loaded. Work: %lu min, Rest: %lu min", 
              global_config.work_time_min, global_config.rest_time_min);
+             
+    test_shortcut_parser();
              
     pomodoro_engine_init();
     rgb_service_init(status_queue);
