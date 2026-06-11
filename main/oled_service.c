@@ -3,6 +3,7 @@
 #include "esp_log.h"
 #include "u8g2.h"
 #include "esp32_hw_i2c.h"
+#include "driver/i2c_master.h"
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
@@ -80,13 +81,20 @@ void oled_service_init(QueueHandle_t q) {
     i2c_ctx.cfg.scl_pin = I2C_SCL_PIN;
     u8g2_esp32_i2c_set_default_context(&i2c_ctx);
 
+    // Try to probe the OLED at its default address 0x3C (7-bit)
+    esp_err_t err = i2c_master_probe(i2c_ctx.bus_handle, 0x3C, 100);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "OLED Display NOT found on I2C bus (0x3C)! Disabling OLED service.");
+        return;
+    }
+
     u8g2_Setup_ssd1306_i2c_128x64_noname_f(
         &u8g2,
         U8G2_R0,
         u8x8_byte_esp32_hw_i2c,
         u8x8_gpio_and_delay_esp32_i2c
     );
-
+    
     u8g2_InitDisplay(&u8g2);
     u8g2_SetPowerSave(&u8g2, 0);
     u8g2_ClearBuffer(&u8g2);

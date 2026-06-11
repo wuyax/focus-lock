@@ -4,7 +4,7 @@
   "idf.openOcdConfigs": [
     "board/esp32s3-builtin.cfg"
   ],
-  "idf.port": "/dev/cu.usbmodem2112401",
+  "idf.port": "/dev/tty.usbserial-0001",
   "idf.currentSetup": "/Users/wuyax/.espressif/v6.0.1/esp-idf",
   "idf.customExtraVars": {
     "IDF_TARGET": "esp32s3"
@@ -15,6 +15,6 @@
     "--query-driver=**",
     "--compile-commands-dir=/Users/wuyax/Downloads/workcopy/espblink/build"
   ],
-  "idf.flashType": "JTAG",
+  "idf.flashType": "UART",
   "idf.flashBaudRate": "115200"
 }

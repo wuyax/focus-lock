@@ -38,6 +38,14 @@ void app_main(void)
     button_service_init();
              
     while (1) {
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        engine_status_t status;
+        if (xQueuePeek(status_queue, &status, 0)) {
+            const char *state_names[] = {"WORK", "WARNING", "REST", "PAUSE", "ADMIN"};
+            uint32_t mins = status.remaining_sec / 60;
+            uint32_t secs = status.remaining_sec % 60;
+            ESP_LOGI(TAG, "Status: [%s] Time: %02lu:%02lu", 
+                     state_names[status.state], mins, secs);
+        }
+        vTaskDelay(pdMS_TO_TICKS(5000));
     }
 }
