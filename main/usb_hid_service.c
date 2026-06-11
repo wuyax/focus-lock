@@ -1,10 +1,13 @@
 #include "usb_hid_service.h"
 #include "pomodoro_engine.h"
+#include "config_mgr.h"
+#include "shortcut_parser.h"
 #include "esp_log.h"
 #include "tinyusb.h"
 #include "class/hid/hid_device.h"
 
 static const char *TAG = "usb_hid";
+extern focuslock_config_t global_config;
 
 static void usb_hid_task(void *arg) {
     QueueHandle_t q = (QueueHandle_t)arg;
@@ -14,11 +17,18 @@ static void usb_hid_task(void *arg) {
     while (1) {
         if (xQueuePeek(q, &status, portMAX_DELAY)) {
             if (status.state == STATE_REST && last_state != STATE_REST) {
-                ESP_LOGI(TAG, "Sending lock command (Win+L)");
-                uint8_t keycode[6] = {HID_KEY_L, 0, 0, 0, 0, 0};
-                tud_hid_keyboard_report(HID_ITF_PROTOCOL_KEYBOARD, KEYBOARD_MODIFIER_LEFTGUI, keycode);
-                vTaskDelay(pdMS_TO_TICKS(50));
-                tud_hid_keyboard_report(HID_ITF_PROTOCOL_KEYBOARD, 0, NULL);
+                uint8_t modifier = 0;
+                uint8_t key = 0;
+
+                if (parse_shortcut(global_config.lock_shortcut, &modifier, &key)) {
+                    ESP_LOGI(TAG, "Sending lock command (%s)", global_config.lock_shortcut);
+                    uint8_t keycode[6] = {key, 0, 0, 0, 0, 0};
+                    tud_hid_keyboard_report(HID_ITF_PROTOCOL_KEYBOARD, modifier, keycode);
+                    vTaskDelay(pdMS_TO_TICKS(50));
+                    tud_hid_keyboard_report(HID_ITF_PROTOCOL_KEYBOARD, 0, NULL);
+                } else {
+                    ESP_LOGE(TAG, "Failed to parse shortcut: %s", global_config.lock_shortcut);
+                }
             }
             last_state = status.state;
         }
