@@ -6,6 +6,7 @@
 #include "pomodoro_engine.h"
 #include "rgb_service.h"
 #include "button_service.h"
+#include "usb_hid_service.h"
 
 static const char *TAG = "main";
 focuslock_config_t global_config;
@@ -24,6 +25,7 @@ void app_main(void)
              
     pomodoro_engine_init();
     rgb_service_init(status_queue);
+    usb_hid_service_init(status_queue);
     button_service_init();
              
     while (1) {
