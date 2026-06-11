@@ -8,6 +8,7 @@
 #include "button_service.h"
 #include "usb_hid_service.h"
 #include "shortcut_parser.h"
+#include "oled_service.h"
 
 extern void test_shortcut_parser();
 
@@ -31,6 +32,7 @@ void app_main(void)
     pomodoro_engine_init();
     rgb_service_init(status_queue);
     usb_hid_service_init(status_queue);
+    oled_service_init(status_queue);
     button_service_init();
              
     while (1) {
