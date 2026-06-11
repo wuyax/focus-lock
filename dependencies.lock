@@ -1,4 +1,14 @@
 dependencies:
+  espressif/cjson:
+    component_hash: e788323270d90738662d66fffa910bfe1fba019bba087f01557e70c40485b469
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=5.0'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 1.7.19~2
   espressif/esp_tinyusb:
     component_hash: 6a50305bc61c7a361da8c0833642be824e92dacb0a6001719a832a4e96e471bf
     dependencies:
@@ -43,21 +53,18 @@ dependencies:
     source:
       type: idf
     version: 6.0.1
-  nixy4/u8g2:
-    component_hash: d23326bf33da6b0a41ef16caa527689d770bcb7c469d8d57ca18a42f4cfed81b
-    dependencies:
-    - name: idf
-      require: private
-      version: '>=5.0'
+  u8g2:
+    dependencies: []
     source:
-      registry_url: https://components.espressif.com/
-      type: service
+      path: components/u8g2
+      type: local
     version: 0.1.4
 direct_dependencies:
+- espressif/cjson
 - espressif/esp_tinyusb
 - espressif/led_strip
 - idf
 - nixy4/u8g2
-manifest_hash: 114b1f4f524ec656c1a204131ff6d1b1eda974f69b09adb826d4d5537246491e
+manifest_hash: 289a7438bea936c8bbd30155c86e97f7ccb72471f3e599db96a20439f3aa8e52
 target: esp32s3
 version: 3.0.0
