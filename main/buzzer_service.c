@@ -2,19 +2,30 @@
 #include "pomodoro_engine.h"
 #include "config_mgr.h"
 #include "driver/gpio.h"
+#include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
 
-#define BUZZER_GPIO 3
+#define BUZZER_GPIO 10
 
 static const char *TAG = "buzzer_service";
 extern focuslock_config_t global_config;
 
+// 使用开漏模式，依靠外部上拉至 5V 来关断
+static void buzzer_set_active(bool active) {
+    if (active) {
+        gpio_set_level(BUZZER_GPIO, 0); // 响
+    } else {
+        gpio_set_level(BUZZER_GPIO, 1); // 依靠上拉电阻关断
+    }
+}
+
 static void beep(uint32_t duration_ms) {
-    if (!global_config.buzzer_enabled) return;
-    gpio_set_level(BUZZER_GPIO, 0); // Active Low
+    if (!global_config.buzzer_enabled) return; 
+    
+    buzzer_set_active(true);
     vTaskDelay(pdMS_TO_TICKS(duration_ms));
-    gpio_set_level(BUZZER_GPIO, 1);
+    buzzer_set_active(false);
 }
 
 static void buzzer_task(void *arg) {
@@ -22,9 +33,15 @@ static void buzzer_task(void *arg) {
     engine_status_t status;
     focus_state_t last_state = STATE_WORK;
 
-    gpio_reset_pin(BUZZER_GPIO);
-    gpio_set_direction(BUZZER_GPIO, GPIO_MODE_OUTPUT);
-    gpio_set_level(BUZZER_GPIO, 1);
+    // 配置为开漏输出模式
+    gpio_config_t io_conf = {
+        .mode = GPIO_MODE_OUTPUT_OD,
+        .pin_bit_mask = (1ULL << BUZZER_GPIO),
+    };
+    gpio_config(&io_conf);
+    gpio_set_level(BUZZER_GPIO, 1); // 默认不响
+
+    ESP_LOGI(TAG, "Buzzer Ready. System in WORK state.");
 
     while(1) {
         if (xQueuePeek(q, &status, 0)) {
@@ -35,6 +52,8 @@ static void buzzer_task(void *arg) {
                     for(int i=0; i<5; i++) { beep(50); vTaskDelay(pdMS_TO_TICKS(50)); }
                 } else if (last_state == STATE_REST && status.state == STATE_WORK) {
                     beep(500);
+                } else if (status.state == STATE_PAUSE) {
+                    beep(50); // 暂停响一声短的
                 }
                 last_state = status.state;
             }
