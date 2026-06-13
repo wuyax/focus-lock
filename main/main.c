@@ -12,6 +12,7 @@
 #include "network_service.h"
 #include "i2c_manager.h"
 #include "rtc_service.h"
+#include "buzzer_service.h"
 
 extern void test_shortcut_parser();
 
@@ -40,6 +41,7 @@ void app_main(void)
     usb_hid_service_init(status_queue);
     oled_service_init(status_queue);
     network_service_init(status_queue);
+    buzzer_service_init(status_queue);
     button_service_init();
              
     while (1) {
