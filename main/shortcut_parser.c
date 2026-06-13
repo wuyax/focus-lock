@@ -60,8 +60,23 @@ bool parse_shortcut(const char *shortcut_str, uint8_t *modifier, uint8_t *keycod
                     return false;
                 }
             } else {
-                // TODO: Support F1-F12 etc if needed
-                return false;
+                if (strcasecmp(last_token, "Space") == 0) *keycode = HID_KEY_SPACE;
+                else if (strcasecmp(last_token, "Enter") == 0) *keycode = HID_KEY_ENTER;
+                else if (strcasecmp(last_token, "Esc") == 0) *keycode = HID_KEY_ESCAPE;
+                else if (strcasecmp(last_token, "Tab") == 0) *keycode = HID_KEY_TAB;
+                else if (strcasecmp(last_token, "F1") == 0) *keycode = HID_KEY_F1;
+                else if (strcasecmp(last_token, "F2") == 0) *keycode = HID_KEY_F2;
+                else if (strcasecmp(last_token, "F3") == 0) *keycode = HID_KEY_F3;
+                else if (strcasecmp(last_token, "F4") == 0) *keycode = HID_KEY_F4;
+                else if (strcasecmp(last_token, "F5") == 0) *keycode = HID_KEY_F5;
+                else if (strcasecmp(last_token, "F6") == 0) *keycode = HID_KEY_F6;
+                else if (strcasecmp(last_token, "F7") == 0) *keycode = HID_KEY_F7;
+                else if (strcasecmp(last_token, "F8") == 0) *keycode = HID_KEY_F8;
+                else if (strcasecmp(last_token, "F9") == 0) *keycode = HID_KEY_F9;
+                else if (strcasecmp(last_token, "F10") == 0) *keycode = HID_KEY_F10;
+                else if (strcasecmp(last_token, "F11") == 0) *keycode = HID_KEY_F11;
+                else if (strcasecmp(last_token, "F12") == 0) *keycode = HID_KEY_F12;
+                else return false;
             }
         }
     }
