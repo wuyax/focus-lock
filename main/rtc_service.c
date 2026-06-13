@@ -11,10 +11,15 @@ esp_err_t rtc_service_init(void) {
         .device_address = 0x68,
         .scl_speed_hz = 100000,
     };
-    return i2c_master_bus_add_device(i2c_bus_handle, &dev_cfg, &rtc_dev_handle);
+    esp_err_t ret = i2c_master_bus_add_device(i2c_bus_handle, &dev_cfg, &rtc_dev_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to add RTC device to I2C bus: 0x%x", ret);
+    }
+    return ret;
 }
 
 static uint8_t bcd2dec(uint8_t val) { return ((val / 16 * 10) + (val % 16)); }
+static uint8_t dec2bcd(uint8_t val) { return ((val / 10 * 16) + (val % 10)); }
 
 esp_err_t rtc_get_time(rtc_time_t *time) {
     uint8_t data[3];
@@ -24,6 +29,18 @@ esp_err_t rtc_get_time(rtc_time_t *time) {
         time->second = bcd2dec(data[0] & 0x7F);
         time->minute = bcd2dec(data[1]);
         time->hour = bcd2dec(data[2] & 0x3F);
+    } else {
+        ESP_LOGE(TAG, "Failed to read time from RTC: 0x%x", ret);
     }
     return ret;
+}
+
+esp_err_t rtc_set_time(const rtc_time_t *time) {
+    uint8_t data[4];
+    data[0] = 0x00; // Start register address
+    data[1] = dec2bcd(time->second);
+    data[2] = dec2bcd(time->minute);
+    data[3] = dec2bcd(time->hour);
+    
+    return i2c_master_transmit(rtc_dev_handle, data, 4, -1);
 }

@@ -232,9 +232,29 @@
             setTimeout(() => { message.style.display = 'none'; }, 3000);
         });
 
+        async function syncTime() {
+            const now = new Date();
+            const timeData = {
+                hour: now.getHours(),
+                minute: now.getMinutes(),
+                second: now.getSeconds()
+            };
+            try {
+                await fetch('/api/sync_time', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(timeData)
+                });
+                console.log('RTC Time synced with browser');
+            } catch (err) {
+                console.error('Failed to sync time', err);
+            }
+        }
+
         // Initial fetch
         fetchConfig();
         fetchStats();
+        syncTime();
         // Refresh stats every 30 seconds
         setInterval(fetchStats, 30000);
     </script>

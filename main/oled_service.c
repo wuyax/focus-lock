@@ -14,14 +14,26 @@ static const char *TAG = "oled";
 
 static u8g2_t u8g2;
 
-static void draw_progress_ring(u8g2_t *u8g2, uint8_t x, uint8_t y, uint8_t r, uint32_t remaining, uint32_t total) {
-    u8g2_DrawCircle(u8g2, x, y, r, U8G2_DRAW_ALL);
-    if (total > 0) {
-        float angle = 2.0f * 3.14159f * (1.0f - (float)remaining / (float)total);
-        int8_t hand_x = (int8_t)(sinf(angle) * (float)r);
-        int8_t hand_y = (int8_t)(-cosf(angle) * (float)r);
-        u8g2_DrawLine(u8g2, x, y, x + hand_x, y + hand_y);
+static void draw_progress_pie(u8g2_t *u8g2, uint8_t x, uint8_t y, uint8_t r, uint32_t remaining, uint32_t total) {
+    if (total == 0) return;
+    float ratio = 1.0f - (float)remaining / (float)total;
+    int end_angle = (int)(ratio * 360.0f);
+    
+    // Use filled pie chart
+    u8g2_DrawDisc(u8g2, x, y, r, U8G2_DRAW_ALL);
+    u8g2_SetDrawColor(u8g2, 0); // Eraser mode
+    
+    // Draw the "remaining" portion as an empty slice or just draw the pie properly
+    // U8G2 doesn't have a direct "DrawFilledPie", so we simulate with Circle + Triangle/Line if needed
+    // Simplified: Draw a solid circle that gets smaller or use u8g2_DrawFilledEllipse
+    // For a real pie chart, we'll draw a sequence of lines from center to perimeter
+    for (int a = 0; end_angle > 0 && a <= end_angle; a++) {
+        float rad = (float)(a - 90) * 0.01745329f; // -90 to start at top
+        int8_t px = (int8_t)(cosf(rad) * (float)r);
+        int8_t py = (int8_t)(sinf(rad) * (float)r);
+        u8g2_DrawLine(u8g2, x, y, x + px, y + py);
     }
+    u8g2_SetDrawColor(u8g2, 1); // Restore normal mode
 }
 
 static void oled_task(void *arg) {
@@ -33,46 +45,52 @@ static void oled_task(void *arg) {
         if (xQueuePeek(q, &status, 0)) {
             u8g2_ClearBuffer(&u8g2);
             
+            // --- TOP YELLOW AREA (y: 0-15) ---
+            const char *state_name = "WORK";
+            switch (status.state) {
+                case STATE_REST: state_name = "RESTING"; break;
+                case STATE_PAUSE: state_name = "PAUSED"; break;
+                case STATE_ADMIN: state_name = "CONFIG"; break;
+                default: break;
+            }
+            u8g2_SetFont(&u8g2, u8g2_font_ncenB08_tr);
+            u8g2_DrawStr(&u8g2, 0, 12, state_name);
+
+            // RTC Time in top-right yellow area
+            rtc_time_t now;
+            if (rtc_get_time(&now) == ESP_OK) {
+                char rtc_str[8];
+                snprintf(rtc_str, sizeof(rtc_str), "%02d:%02d", now.hour, now.minute);
+                u8g2_SetFont(&u8g2, u8g2_font_6x10_tf);
+                u8g2_DrawStr(&u8g2, 98, 12, rtc_str);
+            }
+            
+            u8g2_DrawHLine(&u8g2, 0, 15, 128); // Divider
+
+            // --- BOTTOM BLUE AREA (y: 16-63) ---
             char time_str[16];
             uint32_t mins = status.remaining_sec / 60;
             uint32_t secs = status.remaining_sec % 60;
             snprintf(time_str, sizeof(time_str), "%02lu:%02lu", mins, secs);
 
             if (status.state == STATE_WARNING) {
-                // Large blinking seconds
                 if (blinking) {
                     u8g2_SetFont(&u8g2, u8g2_font_logisoso32_tf);
                     char warn_str[8];
                     snprintf(warn_str, sizeof(warn_str), "%lu", status.remaining_sec);
                     uint8_t w = u8g2_GetStrWidth(&u8g2, warn_str);
-                    u8g2_DrawStr(&u8g2, (128 - w) / 2, 45, warn_str);
+                    u8g2_DrawStr(&u8g2, (128 - w) / 2, 55, warn_str);
                 }
                 blinking = !blinking;
             } else {
-                const char *state_name = "WORK";
-                switch (status.state) {
-                    case STATE_REST: state_name = "REST"; break;
-                    case STATE_PAUSE: state_name = "PAUSE"; break;
-                    case STATE_ADMIN: state_name = "ADMIN"; break;
-                    default: break;
-                }
-
-                u8g2_SetFont(&u8g2, u8g2_font_ncenB14_tr);
-                u8g2_DrawStr(&u8g2, 0, 15, state_name);
-
-                // Draw RTC Time in corner
-                rtc_time_t now;
-                if (rtc_get_time(&now) == ESP_OK) {
-                    char rtc_str[8];
-                    snprintf(rtc_str, sizeof(rtc_str), "%02d:%02d", now.hour, now.minute);
-                    u8g2_SetFont(&u8g2, u8g2_font_6x10_tf);
-                    u8g2_DrawStr(&u8g2, 95, 10, rtc_str);
-                }
-
                 u8g2_SetFont(&u8g2, u8g2_font_ncenB18_tr);
-                u8g2_DrawStr(&u8g2, 0, 45, time_str);
+                u8g2_DrawStr(&u8g2, 5, 48, time_str);
 
-                draw_progress_ring(&u8g2, 100, 32, 25, status.remaining_sec, status.total_sec);
+                // Pie chart moved down to blue area and shrunken
+                // Center (105, 42), Radius 18 (fits within y=24 to y=60)
+                draw_progress_pie(&u8g2, 105, 42, 18, status.remaining_sec, status.total_sec);
+                // Outer ring
+                u8g2_DrawCircle(&u8g2, 105, 42, 20, U8G2_DRAW_ALL);
             }
 
             u8g2_SendBuffer(&u8g2);
