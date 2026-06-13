@@ -4,8 +4,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#define WS2812_GPIO CONFIG_BLINK_GPIO 
-
+#define WS2812_GPIO 8
 static led_strip_handle_t led_strip;
 
 static void init_ws2812(void) {

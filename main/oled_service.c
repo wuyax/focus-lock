@@ -82,9 +82,10 @@ static void oled_task(void *arg) {
 }
 
 void oled_service_init(QueueHandle_t q) {
-    u8g2_esp32_i2c_ctx_t i2c_ctx = {
+    static u8g2_esp32_i2c_ctx_t i2c_ctx = {
         .cfg = U8G2_ESP32_I2C_CONFIG_DEFAULT(),
         .bus_handle = i2c_bus_handle,
+        .initialized = 1, // Mark as initialized so port doesn't try to create new bus
     };
     u8g2_esp32_i2c_set_default_context(&i2c_ctx);
 
