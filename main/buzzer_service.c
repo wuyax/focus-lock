@@ -1,11 +1,17 @@
 #include "buzzer_service.h"
 #include "pomodoro_engine.h"
+#include "config_mgr.h"
 #include "driver/gpio.h"
 #include "freertos/task.h"
+#include "esp_log.h"
 
 #define BUZZER_GPIO 3
 
+static const char *TAG = "buzzer_service";
+extern focuslock_config_t global_config;
+
 static void beep(uint32_t duration_ms) {
+    if (!global_config.buzzer_enabled) return;
     gpio_set_level(BUZZER_GPIO, 0); // Active Low
     vTaskDelay(pdMS_TO_TICKS(duration_ms));
     gpio_set_level(BUZZER_GPIO, 1);
@@ -38,5 +44,7 @@ static void buzzer_task(void *arg) {
 }
 
 void buzzer_service_init(QueueHandle_t status_queue) {
-    xTaskCreate(buzzer_task, "buzzer_task", 2048, status_queue, 5, NULL);
+    if (xTaskCreate(buzzer_task, "buzzer_task", 2048, status_queue, 5, NULL) != pdPASS) {
+        ESP_LOGE(TAG, "Failed to create buzzer task");
+    }
 }

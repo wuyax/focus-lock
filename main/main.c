@@ -10,6 +10,8 @@
 #include "shortcut_parser.h"
 #include "oled_service.h"
 #include "network_service.h"
+#include "i2c_manager.h"
+#include "rtc_service.h"
 
 extern void test_shortcut_parser();
 
@@ -29,6 +31,9 @@ void app_main(void)
              global_config.work_time_min, global_config.rest_time_min);
              
     test_shortcut_parser();
+
+    ESP_ERROR_CHECK(i2c_manager_init());
+    ESP_ERROR_CHECK(rtc_service_init());
              
     pomodoro_engine_init();
     rgb_service_init(status_queue);

@@ -4,14 +4,13 @@
 #include "u8g2.h"
 #include "esp32_hw_i2c.h"
 #include "driver/i2c_master.h"
+#include "i2c_manager.h"
+#include "rtc_service.h"
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
 
 static const char *TAG = "oled";
-
-#define I2C_SDA_PIN 1
-#define I2C_SCL_PIN 2
 
 static u8g2_t u8g2;
 
@@ -61,6 +60,15 @@ static void oled_task(void *arg) {
                 u8g2_SetFont(&u8g2, u8g2_font_ncenB14_tr);
                 u8g2_DrawStr(&u8g2, 0, 15, state_name);
 
+                // Draw RTC Time in corner
+                rtc_time_t now;
+                if (rtc_get_time(&now) == ESP_OK) {
+                    char rtc_str[8];
+                    snprintf(rtc_str, sizeof(rtc_str), "%02d:%02d", now.hour, now.minute);
+                    u8g2_SetFont(&u8g2, u8g2_font_6x10_tf);
+                    u8g2_DrawStr(&u8g2, 95, 10, rtc_str);
+                }
+
                 u8g2_SetFont(&u8g2, u8g2_font_ncenB18_tr);
                 u8g2_DrawStr(&u8g2, 0, 45, time_str);
 
@@ -76,13 +84,12 @@ static void oled_task(void *arg) {
 void oled_service_init(QueueHandle_t q) {
     u8g2_esp32_i2c_ctx_t i2c_ctx = {
         .cfg = U8G2_ESP32_I2C_CONFIG_DEFAULT(),
+        .bus_handle = i2c_bus_handle,
     };
-    i2c_ctx.cfg.sda_pin = I2C_SDA_PIN;
-    i2c_ctx.cfg.scl_pin = I2C_SCL_PIN;
     u8g2_esp32_i2c_set_default_context(&i2c_ctx);
 
     // Try to probe the OLED at its default address 0x3C (7-bit)
-    esp_err_t err = i2c_master_probe(i2c_ctx.bus_handle, 0x3C, 100);
+    esp_err_t err = i2c_master_probe(i2c_bus_handle, 0x3C, 100);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "OLED Display NOT found on I2C bus (0x3C)! Disabling OLED service.");
         return;
