@@ -84,7 +84,9 @@ static void oled_task(void *arg) {
                 blinking = !blinking;
             } else {
                 u8g2_SetFont(&u8g2, u8g2_font_ncenB18_tr);
-                u8g2_DrawStr(&u8g2, 5, 48, time_str);
+                int8_t ascent = u8g2_GetAscent(&u8g2);
+                uint8_t text_baseline_y = 42 + (ascent / 2);
+                u8g2_DrawStr(&u8g2, 5, text_baseline_y, time_str);
 
                 // Pie chart moved down to blue area and shrunken
                 // Center (105, 42), Radius 18 (fits within y=24 to y=60)

@@ -20,7 +20,7 @@ static void buzzer_set_active(bool active) {
     }
 }
 
-static void beep(uint32_t duration_ms) {
+void buzzer_beep(uint32_t duration_ms) {
     if (!global_config.buzzer_enabled) return; 
     
     buzzer_set_active(true);
@@ -47,13 +47,13 @@ static void buzzer_task(void *arg) {
         if (xQueuePeek(q, &status, 0)) {
             if (status.state != last_state) {
                 if (status.state == STATE_WARNING) {
-                    for(int i=0; i<3; i++) { beep(100); vTaskDelay(pdMS_TO_TICKS(900)); }
+                    for(int i=0; i<3; i++) { buzzer_beep(100); vTaskDelay(pdMS_TO_TICKS(900)); }
                 } else if (status.state == STATE_REST) {
-                    for(int i=0; i<5; i++) { beep(50); vTaskDelay(pdMS_TO_TICKS(50)); }
+                    for(int i=0; i<5; i++) { buzzer_beep(50); vTaskDelay(pdMS_TO_TICKS(50)); }
                 } else if (last_state == STATE_REST && status.state == STATE_WORK) {
-                    beep(500);
+                    buzzer_beep(500);
                 } else if (status.state == STATE_PAUSE) {
-                    beep(50); // 暂停响一声短的
+                    buzzer_beep(50); // 暂停响一声短的
                 }
                 last_state = status.state;
             }
