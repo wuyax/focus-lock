@@ -17,23 +17,23 @@ static u8g2_t u8g2;
 static void draw_progress_pie(u8g2_t *u8g2, uint8_t x, uint8_t y, uint8_t r, uint32_t remaining, uint32_t total) {
     if (total == 0) return;
     float ratio = 1.0f - (float)remaining / (float)total;
-    int end_angle = (int)(ratio * 360.0f);
+    float end_angle = ratio * 360.0f;
     
-    // Use filled pie chart
-    u8g2_DrawDisc(u8g2, x, y, r, U8G2_DRAW_ALL);
-    u8g2_SetDrawColor(u8g2, 0); // Eraser mode
-    
-    // Draw the "remaining" portion as an empty slice or just draw the pie properly
-    // U8G2 doesn't have a direct "DrawFilledPie", so we simulate with Circle + Triangle/Line if needed
-    // Simplified: Draw a solid circle that gets smaller or use u8g2_DrawFilledEllipse
-    // For a real pie chart, we'll draw a sequence of lines from center to perimeter
-    for (int a = 0; end_angle > 0 && a <= end_angle; a++) {
-        float rad = (float)(a - 90) * 0.01745329f; // -90 to start at top
-        int8_t px = (int8_t)(cosf(rad) * (float)r);
-        int8_t py = (int8_t)(sinf(rad) * (float)r);
-        u8g2_DrawLine(u8g2, x, y, x + px, y + py);
+    // Mathematically draw ONLY the remaining pie wedge directly.
+    // This avoids using u8g2_DrawDisc and erasing, which leaves artifacts.
+    int r2 = r * r;
+    for (int dy = -r; dy <= r; dy++) {
+        for (int dx = -r; dx <= r; dx++) {
+            if (dx * dx + dy * dy <= r2) {
+                float angle = atan2f((float)dx, (float)-dy) * 180.0f / 3.14159265f;
+                if (angle < 0) angle += 360.0f;
+                // Only draw pixels that are ahead of the elapsed angle
+                if (angle >= end_angle) {
+                    u8g2_DrawPixel(u8g2, x + dx, y + dy);
+                }
+            }
+        }
     }
-    u8g2_SetDrawColor(u8g2, 1); // Restore normal mode
 }
 
 static void oled_task(void *arg) {
