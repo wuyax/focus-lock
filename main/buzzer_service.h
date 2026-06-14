@@ -4,6 +4,7 @@
  */
 
 #pragma once
+#include <stdint.h>
 /**
  * @brief Initializes the buzzer service task.
  */
