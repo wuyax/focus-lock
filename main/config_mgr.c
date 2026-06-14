@@ -17,6 +17,7 @@ static const char *NVS_NAMESPACE = "focuslock";
  * @param cfg Pointer to the configuration structure to initialize.
  */
 static void set_default_config(focuslock_config_t *cfg) {
+    memset(cfg, 0, sizeof(focuslock_config_t));
     cfg->work_time_min = 45;
     cfg->rest_time_min = 5;
     cfg->warning_time_sec = 30;
