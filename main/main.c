@@ -9,6 +9,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
+#include "esp_event.h"
 #include "config_mgr.h"
 #include "pomodoro_engine.h"
 #include "rgb_service.h"
@@ -28,6 +29,8 @@ focuslock_stats_t global_stats;
 void app_main(void)
 {
     ESP_LOGI(TAG, "Starting FocusLock");
+    
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
     
     ESP_ERROR_CHECK(config_mgr_init());
     config_mgr_load(&global_config);

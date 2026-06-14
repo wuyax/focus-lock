@@ -9,10 +9,16 @@
 #include "freertos/queue.h"
 #include "esp_event.h"
 
+/**
+ * @brief Event base for Pomodoro engine events.
+ */
 ESP_EVENT_DECLARE_BASE(POMODORO_EVENTS);
 
+/**
+ * @brief Event IDs for Pomodoro engine events.
+ */
 typedef enum {
-    POMODORO_EVENT_STATE_UPDATE
+    POMODORO_EVENT_STATE_UPDATE /**< Broadcasted when engine status changes. */
 } pomodoro_event_id_t;
 
 /**

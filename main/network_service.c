@@ -81,10 +81,6 @@ static void network_task(void *pvParameters)
 void network_service_init(QueueHandle_t q)
 {
     ESP_ERROR_CHECK(esp_netif_init());
-    esp_err_t err = esp_event_loop_create_default();
-    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
-        ESP_ERROR_CHECK(err);
-    }
 
     xTaskCreate(network_task, "network_task", 4096, (void *)q, 5, NULL);
 }

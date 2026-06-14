@@ -48,7 +48,10 @@ static void update_status_and_notify(void) {
     if (status_queue) {
         xQueueOverwrite(status_queue, &current_status);
     }
-    esp_event_post(POMODORO_EVENTS, POMODORO_EVENT_STATE_UPDATE, &current_status, sizeof(engine_status_t), portMAX_DELAY);
+    esp_err_t err = esp_event_post(POMODORO_EVENTS, POMODORO_EVENT_STATE_UPDATE, &current_status, sizeof(engine_status_t), portMAX_DELAY);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to post pomodoro event: %s", esp_err_to_name(err));
+    }
 }
 
 /**
