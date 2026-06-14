@@ -1,3 +1,8 @@
+/**
+ * @file oled_service.c
+ * @brief Implementation of the OLED display service.
+ */
+
 #include "oled_service.h"
 #include "pomodoro_engine.h"
 #include "esp_log.h"

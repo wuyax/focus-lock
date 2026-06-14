@@ -1,3 +1,8 @@
+/**
+ * @file network_service.c
+ * @brief Implementation of the network service.
+ */
+
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
