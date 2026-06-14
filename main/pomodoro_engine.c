@@ -11,6 +11,12 @@ QueueHandle_t status_queue;
 static QueueHandle_t event_queue;
 static engine_status_t current_status;
 static focus_state_t pre_admin_state = STATE_WORK;
+static uint32_t pre_admin_remaining_sec = 0;
+static uint32_t pre_admin_total_sec = 0;
+
+static uint32_t pre_pause_remaining_sec = 0;
+static uint32_t pre_pause_total_sec = 0;
+
 static uint32_t work_sec_counter = 0;
 static uint32_t rest_sec_counter = 0;
 
@@ -45,6 +51,14 @@ static void transition_to(focus_state_t new_state) {
             break;
     }
     ESP_LOGI(TAG, "State transition to %d", new_state);
+    update_status_and_notify();
+}
+
+static void resume_state(focus_state_t state, uint32_t remaining, uint32_t total) {
+    current_status.state = state;
+    current_status.remaining_sec = remaining;
+    current_status.total_sec = total;
+    ESP_LOGI(TAG, "Resuming state %d, remaining: %lu", state, remaining);
     update_status_and_notify();
 }
 
@@ -99,8 +113,14 @@ static void engine_task(void *arg) {
                     handle_tick();
                     break;
                 case EVT_CLICK:
-                    if (current_status.state == STATE_WORK) transition_to(STATE_PAUSE);
-                    else if (current_status.state == STATE_PAUSE) transition_to(STATE_WORK);
+                    if (current_status.state == STATE_WORK) {
+                        pre_pause_remaining_sec = current_status.remaining_sec;
+                        pre_pause_total_sec = current_status.total_sec;
+                        transition_to(STATE_PAUSE);
+                    }
+                    else if (current_status.state == STATE_PAUSE) {
+                        resume_state(STATE_WORK, pre_pause_remaining_sec, pre_pause_total_sec);
+                    }
                     break;
                 case EVT_DOUBLE_CLICK:
                     if (current_status.state == STATE_WORK || current_status.state == STATE_WARNING) {
@@ -112,9 +132,11 @@ static void engine_task(void *arg) {
                 case EVT_LONG_PRESS:
                     if (current_status.state != STATE_ADMIN) {
                         pre_admin_state = current_status.state;
+                        pre_admin_remaining_sec = current_status.remaining_sec;
+                        pre_admin_total_sec = current_status.total_sec;
                         transition_to(STATE_ADMIN);
                     } else {
-                        transition_to(pre_admin_state);
+                        resume_state(pre_admin_state, pre_admin_remaining_sec, pre_admin_total_sec);
                     }
                     break;
             }
