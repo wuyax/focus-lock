@@ -12,6 +12,21 @@
 static const char *TAG = "config_mgr";
 static const char *NVS_NAMESPACE = "focuslock";
 
+/**
+ * @brief Sets the default configuration values.
+ * @param cfg Pointer to the configuration structure to initialize.
+ */
+static void set_default_config(focuslock_config_t *cfg) {
+    cfg->work_time_min = 45;
+    cfg->rest_time_min = 5;
+    cfg->warning_time_sec = 30;
+    strcpy(cfg->lock_shortcut, "Win+L");
+    cfg->repeat_lock = true;
+    cfg->repeat_interval_sec = 10;
+    cfg->buzzer_enabled = true;
+    cfg->led_brightness = 100;
+}
+
 esp_err_t config_mgr_init(void) {
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -25,28 +40,14 @@ esp_err_t config_mgr_load(focuslock_config_t *cfg) {
     nvs_handle_t handle;
     esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READONLY, &handle);
     if (err != ESP_OK) {
-        cfg->work_time_min = 45;
-        cfg->rest_time_min = 5;
-        cfg->warning_time_sec = 30;
-        strcpy(cfg->lock_shortcut, "Win+L");
-        cfg->repeat_lock = true;
-        cfg->repeat_interval_sec = 10;
-        cfg->buzzer_enabled = true;
-        cfg->led_brightness = 100;
+        set_default_config(cfg);
         return ESP_OK;
     }
     
     size_t required_size = sizeof(focuslock_config_t);
     err = nvs_get_blob(handle, "config", cfg, &required_size);
     if (err != ESP_OK) {
-        cfg->work_time_min = 45;
-        cfg->rest_time_min = 5;
-        cfg->warning_time_sec = 30;
-        strcpy(cfg->lock_shortcut, "Win+L");
-        cfg->repeat_lock = true;
-        cfg->repeat_interval_sec = 10;
-        cfg->buzzer_enabled = true;
-        cfg->led_brightness = 100;
+        set_default_config(cfg);
     }
     nvs_close(handle);
     return ESP_OK;
