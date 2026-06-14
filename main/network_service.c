@@ -57,30 +57,27 @@ static void wifi_stop_softap(void)
     ESP_LOGI(TAG, "wifi_stop_softap finished.");
 }
 
-static void network_task(void *pvParameters)
+static void state_update_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
 {
-    QueueHandle_t status_queue = (QueueHandle_t)pvParameters;
-    engine_status_t status;
-
-    while (1) {
-        if (xQueuePeek(status_queue, &status, pdMS_TO_TICKS(100)) == pdTRUE) {
-            if (status.state == STATE_ADMIN && !wifi_started) {
-                ESP_LOGI(TAG, "Entering ADMIN state, starting Wi-Fi AP");
-                wifi_init_softap();
-                wifi_started = true;
-            } else if (status.state != STATE_ADMIN && wifi_started) {
-                ESP_LOGI(TAG, "Leaving ADMIN state, stopping Wi-Fi AP");
-                wifi_stop_softap();
-                wifi_started = false;
-            }
-        }
-        vTaskDelay(pdMS_TO_TICKS(1000));
+    engine_status_t *status = (engine_status_t *)event_data;
+    if (status->state == STATE_ADMIN && !wifi_started) {
+        ESP_LOGI(TAG, "Entering ADMIN state, starting Wi-Fi AP");
+        wifi_init_softap();
+        wifi_started = true;
+    } else if (status->state != STATE_ADMIN && wifi_started) {
+        ESP_LOGI(TAG, "Leaving ADMIN state, stopping Wi-Fi AP");
+        wifi_stop_softap();
+        wifi_started = false;
     }
 }
 
-void network_service_init(QueueHandle_t q)
+void network_service_init(void)
 {
     ESP_ERROR_CHECK(esp_netif_init());
 
-    xTaskCreate(network_task, "network_task", 4096, (void *)q, 5, NULL);
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(POMODORO_EVENTS, 
+                                                        POMODORO_EVENT_STATE_UPDATE, 
+                                                        &state_update_handler, 
+                                                        NULL, 
+                                                        NULL));
 }

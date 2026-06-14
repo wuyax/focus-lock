@@ -19,8 +19,7 @@ static const char *TAG = "engine";
 extern focuslock_config_t global_config;
 extern focuslock_stats_t global_stats;
 
-/* Queues for event processing and status broadcasting */
-QueueHandle_t status_queue;
+/* Queues for event processing */
 static QueueHandle_t event_queue;
 
 /* Current state of the engine */
@@ -42,12 +41,9 @@ static uint32_t work_sec_counter = 0;
 static uint32_t rest_sec_counter = 0;
 
 /**
- * @brief Broadcasts the current status to the status_queue (consumed by OLED UI).
+ * @brief Broadcasts the current status via esp_event (consumed by OLED, RGB, etc).
  */
 static void update_status_and_notify(void) {
-    if (status_queue) {
-        xQueueOverwrite(status_queue, &current_status);
-    }
     esp_err_t err = esp_event_post(POMODORO_EVENTS, POMODORO_EVENT_STATE_UPDATE, &current_status, sizeof(engine_status_t), portMAX_DELAY);
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "Failed to post pomodoro event: %s", esp_err_to_name(err));
@@ -219,8 +215,7 @@ void pomodoro_engine_send_event(engine_event_t evt) {
 }
 
 void pomodoro_engine_init(void) {
-    // Create queues for status publishing and event receiving
-    status_queue = xQueueCreate(1, sizeof(engine_status_t));
+    // Create queues for event receiving
     event_queue = xQueueCreate(10, sizeof(engine_event_t));
     
     // Initialize 1-second hardware timer

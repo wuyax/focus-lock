@@ -61,8 +61,3 @@ void pomodoro_engine_init(void);
  * @param evt The event to send.
  */
 void pomodoro_engine_send_event(engine_event_t evt);
-
-/**
- * @brief Queue handle for receiving engine status updates.
- */
-extern QueueHandle_t status_queue; 

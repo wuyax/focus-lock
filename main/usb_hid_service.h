@@ -9,6 +9,5 @@
 
 /**
  * @brief Initialize the USB HID service.
- * @param q Handle to the queue for receiving HID events.
  */
-void usb_hid_service_init(QueueHandle_t q);
+void usb_hid_service_init(void);

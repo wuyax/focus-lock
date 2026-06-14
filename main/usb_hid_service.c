@@ -14,13 +14,22 @@
 static const char *TAG = "usb_hid";
 extern focuslock_config_t global_config;
 
+static QueueHandle_t internal_q = NULL;
+
+static void usb_hid_event_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
+{
+    engine_status_t *status = (engine_status_t *)event_data;
+    if (internal_q) {
+        xQueueOverwrite(internal_q, status);
+    }
+}
+
 static void usb_hid_task(void *arg) {
-    QueueHandle_t q = (QueueHandle_t)arg;
     engine_status_t status;
     static focus_state_t last_state = STATE_WORK;
 
     while (1) {
-        if (xQueuePeek(q, &status, portMAX_DELAY)) {
+        if (xQueuePeek(internal_q, &status, portMAX_DELAY)) {
             if (status.state == STATE_REST && last_state != STATE_REST) {
                 uint8_t modifier = 0;
                 uint8_t key = 0;
@@ -97,7 +106,14 @@ uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_t
 void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize) {
 }
 
-void usb_hid_service_init(QueueHandle_t q) {
+void usb_hid_service_init(void) {
+    internal_q = xQueueCreate(1, sizeof(engine_status_t));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(POMODORO_EVENTS, 
+                                                        POMODORO_EVENT_STATE_UPDATE, 
+                                                        &usb_hid_event_handler, 
+                                                        NULL, 
+                                                        NULL));
+
     const tinyusb_config_t tusb_cfg = {
         .device_descriptor = &desc_device,
         .string_descriptor = string_desc_arr,
@@ -109,5 +125,5 @@ void usb_hid_service_init(QueueHandle_t q) {
     ESP_ERROR_CHECK(tinyusb_driver_install(&tusb_cfg));
     ESP_LOGI(TAG, "USB HID Driver installed");
 
-    xTaskCreate(usb_hid_task, "usb_hid_task", 4096, (void *)q, 5, NULL);
+    xTaskCreate(usb_hid_task, "usb_hid_task", 4096, NULL, 5, NULL);
 }

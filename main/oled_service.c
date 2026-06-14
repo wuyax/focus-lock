@@ -18,6 +18,13 @@
 static const char *TAG = "oled";
 
 static u8g2_t u8g2;
+static engine_status_t g_status;
+
+static void oled_event_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
+{
+    engine_status_t *status = (engine_status_t *)event_data;
+    g_status = *status;
+}
 
 static void draw_progress_pie(u8g2_t *u8g2, uint8_t x, uint8_t y, uint8_t r, uint32_t remaining, uint32_t total) {
     if (total == 0) return;
@@ -42,77 +49,79 @@ static void draw_progress_pie(u8g2_t *u8g2, uint8_t x, uint8_t y, uint8_t r, uin
 }
 
 static void oled_task(void *arg) {
-    QueueHandle_t q = (QueueHandle_t)arg;
-    engine_status_t status;
     bool blinking = false;
 
     while (1) {
-        if (xQueuePeek(q, &status, 0)) {
-            u8g2_ClearBuffer(&u8g2);
-            
-            // --- TOP YELLOW AREA (y: 0-15) ---
-            const char *state_name = "WORK";
-            switch (status.state) {
-                case STATE_REST: state_name = "RESTING"; break;
-                case STATE_PAUSE: state_name = "PAUSED"; break;
-                case STATE_ADMIN: state_name = "CONFIG"; break;
-                default: break;
-            }
-            u8g2_SetFont(&u8g2, u8g2_font_ncenB08_tr);
-            u8g2_DrawStr(&u8g2, 0, 12, state_name);
-
-            // RTC Time in top-right yellow area
-            rtc_time_t now;
-            if (rtc_get_time(&now) == ESP_OK) {
-                char rtc_str[8];
-                snprintf(rtc_str, sizeof(rtc_str), "%02d:%02d", now.hour, now.minute);
-                u8g2_SetFont(&u8g2, u8g2_font_6x10_tf);
-                u8g2_DrawStr(&u8g2, 98, 12, rtc_str);
-            }
-            
-            u8g2_DrawHLine(&u8g2, 0, 15, 128); // Divider
-
-            // --- BOTTOM BLUE AREA (y: 16-63) ---
-            char time_str[16];
-            uint32_t mins = status.remaining_sec / 60;
-            uint32_t secs = status.remaining_sec % 60;
-            snprintf(time_str, sizeof(time_str), "%02lu:%02lu", mins, secs);
-
-            if (status.state == STATE_WARNING) {
-                if (blinking) {
-                    u8g2_SetFont(&u8g2, u8g2_font_logisoso32_tf);
-                    char warn_str[8];
-                    snprintf(warn_str, sizeof(warn_str), "%lu", status.remaining_sec);
-                    uint8_t w = u8g2_GetStrWidth(&u8g2, warn_str);
-                    u8g2_DrawStr(&u8g2, (128 - w) / 2, 55, warn_str);
-                }
-                blinking = !blinking;
-            } else {
-                u8g2_SetFont(&u8g2, u8g2_font_ncenB18_tr);
-                int8_t ascent = u8g2_GetAscent(&u8g2);
-                uint8_t text_baseline_y = 42 + (ascent / 2);
-                u8g2_DrawStr(&u8g2, 5, text_baseline_y, time_str);
-
-                // Pie chart moved down to blue area and shrunken
-                // Center (105, 42), Radius 18 (fits within y=24 to y=60)
-                draw_progress_pie(&u8g2, 105, 42, 18, status.remaining_sec, status.total_sec);
-                // Outer ring
-                u8g2_DrawCircle(&u8g2, 105, 42, 20, U8G2_DRAW_ALL);
-            }
-
-            u8g2_SendBuffer(&u8g2);
+        u8g2_ClearBuffer(&u8g2);
+        
+        // --- TOP YELLOW AREA (y: 0-15) ---
+        const char *state_name = "WORK";
+        switch (g_status.state) {
+            case STATE_REST: state_name = "RESTING"; break;
+            case STATE_PAUSE: state_name = "PAUSED"; break;
+            case STATE_ADMIN: state_name = "CONFIG"; break;
+            default: break;
         }
+        u8g2_SetFont(&u8g2, u8g2_font_ncenB08_tr);
+        u8g2_DrawStr(&u8g2, 0, 12, state_name);
+
+        // RTC Time in top-right yellow area
+        rtc_time_t now;
+        if (rtc_get_time(&now) == ESP_OK) {
+            char rtc_str[8];
+            snprintf(rtc_str, sizeof(rtc_str), "%02d:%02d", now.hour, now.minute);
+            u8g2_SetFont(&u8g2, u8g2_font_6x10_tf);
+            u8g2_DrawStr(&u8g2, 98, 12, rtc_str);
+        }
+        
+        u8g2_DrawHLine(&u8g2, 0, 15, 128); // Divider
+
+        // --- BOTTOM BLUE AREA (y: 16-63) ---
+        char time_str[16];
+        uint32_t mins = g_status.remaining_sec / 60;
+        uint32_t secs = g_status.remaining_sec % 60;
+        snprintf(time_str, sizeof(time_str), "%02lu:%02lu", mins, secs);
+
+        if (g_status.state == STATE_WARNING) {
+            if (blinking) {
+                u8g2_SetFont(&u8g2, u8g2_font_logisoso32_tf);
+                char warn_str[8];
+                snprintf(warn_str, sizeof(warn_str), "%lu", g_status.remaining_sec);
+                uint8_t w = u8g2_GetStrWidth(&u8g2, warn_str);
+                u8g2_DrawStr(&u8g2, (128 - w) / 2, 55, warn_str);
+            }
+            blinking = !blinking;
+        } else {
+            u8g2_SetFont(&u8g2, u8g2_font_ncenB18_tr);
+            int8_t ascent = u8g2_GetAscent(&u8g2);
+            uint8_t text_baseline_y = 42 + (ascent / 2);
+            u8g2_DrawStr(&u8g2, 5, text_baseline_y, time_str);
+
+            // Pie chart moved down to blue area and shrunken
+            // Center (105, 42), Radius 18 (fits within y=24 to y=60)
+            draw_progress_pie(&u8g2, 105, 42, 18, g_status.remaining_sec, g_status.total_sec);
+            // Outer ring
+            u8g2_DrawCircle(&u8g2, 105, 42, 20, U8G2_DRAW_ALL);
+        }
+
+        u8g2_SendBuffer(&u8g2);
         vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 
-void oled_service_init(QueueHandle_t q) {
+void oled_service_init(void) {
     static u8g2_esp32_i2c_ctx_t i2c_ctx;
     memset(&i2c_ctx, 0, sizeof(i2c_ctx));
     i2c_ctx.cfg = (u8g2_esp32_i2c_config_t)U8G2_ESP32_I2C_CONFIG_DEFAULT();
     i2c_ctx.bus_handle = i2c_bus_handle;
     i2c_ctx.initialized = 1; // Mark as initialized so port doesn't try to create new bus
     u8g2_esp32_i2c_set_default_context(&i2c_ctx);
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(POMODORO_EVENTS, 
+                                                        POMODORO_EVENT_STATE_UPDATE, 
+                                                        &oled_event_handler, 
+                                                        NULL, 
+                                                        NULL));
 
     // Try to probe the OLED at its default address 0x3C (7-bit)
     esp_err_t err = i2c_master_probe(i2c_bus_handle, 0x3C, 100);
@@ -134,5 +143,5 @@ void oled_service_init(QueueHandle_t q) {
     u8g2_SendBuffer(&u8g2);
 
     ESP_LOGI(TAG, "OLED Service Initialized");
-    xTaskCreate(oled_task, "oled_task", 4096, (void *)q, 4, NULL);
+    xTaskCreate(oled_task, "oled_task", 4096, NULL, 4, NULL);
 }

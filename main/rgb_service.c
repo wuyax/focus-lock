@@ -25,15 +25,24 @@ static void init_ws2812(void) {
     led_strip_clear(led_strip);
 }
 
+static QueueHandle_t internal_q = NULL;
+
+static void rgb_event_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
+{
+    engine_status_t *status = (engine_status_t *)event_data;
+    if (internal_q) {
+        xQueueOverwrite(internal_q, status);
+    }
+}
+
 static void rgb_task(void *arg) {
-    QueueHandle_t q = (QueueHandle_t)arg;
     engine_status_t status;
     focus_state_t local_state = STATE_WORK;
     uint8_t breath_val = 0;
     int8_t breath_dir = 5;
     
     while(1) {
-        if (xQueuePeek(q, &status, 0)) {
+        if (xQueueReceive(internal_q, &status, 0)) {
             local_state = status.state;
         }
 
@@ -60,7 +69,16 @@ static void rgb_task(void *arg) {
     }
 }
 
-void rgb_service_init(QueueHandle_t q) {
+void rgb_service_init(void) {
+    internal_q = xQueueCreate(1, sizeof(engine_status_t));
+    if (internal_q == NULL) return;
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(POMODORO_EVENTS, 
+                                                        POMODORO_EVENT_STATE_UPDATE, 
+                                                        &rgb_event_handler, 
+                                                        NULL, 
+                                                        NULL));
+
     init_ws2812();
-    xTaskCreate(rgb_task, "rgb_task", 2048, (void *)q, 4, NULL);
+    xTaskCreate(rgb_task, "rgb_task", 2048, NULL, 4, NULL);
 }

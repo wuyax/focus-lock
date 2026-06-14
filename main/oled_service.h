@@ -9,7 +9,5 @@
 
 /**
  * @brief Initialize the OLED service.
- * 
- * @param q Queue handle for receiving engine status updates.
  */
-void oled_service_init(QueueHandle_t q);
+void oled_service_init(void);

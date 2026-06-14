@@ -4,14 +4,10 @@
  */
 
 #pragma once
-#include "freertos/FreeRTOS.h"
-#include "freertos/queue.h"
-
 /**
  * @brief Initializes the buzzer service task.
- * @param status_queue Queue to receive engine status updates.
  */
-void buzzer_service_init(QueueHandle_t status_queue);
+void buzzer_service_init(void);
 
 /**
  * @brief Produces a single beep.

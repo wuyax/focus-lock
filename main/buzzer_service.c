@@ -33,8 +33,17 @@ void buzzer_beep(uint32_t duration_ms) {
     buzzer_set_active(false);
 }
 
+static QueueHandle_t internal_q = NULL;
+
+static void buzzer_event_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
+{
+    engine_status_t *status = (engine_status_t *)event_data;
+    if (internal_q) {
+        xQueueOverwrite(internal_q, status);
+    }
+}
+
 static void buzzer_task(void *arg) {
-    QueueHandle_t q = (QueueHandle_t)arg;
     engine_status_t status;
     focus_state_t last_state = STATE_WORK;
 
@@ -49,7 +58,7 @@ static void buzzer_task(void *arg) {
     ESP_LOGI(TAG, "Buzzer Ready. System in WORK state.");
 
     while(1) {
-        if (xQueuePeek(q, &status, 0)) {
+        if (xQueueReceive(internal_q, &status, portMAX_DELAY)) {
             if (status.state != last_state) {
                 if (status.state == STATE_WARNING) {
                     for(int i=0; i<3; i++) { buzzer_beep(100); vTaskDelay(pdMS_TO_TICKS(900)); }
@@ -63,12 +72,23 @@ static void buzzer_task(void *arg) {
                 last_state = status.state;
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 
-void buzzer_service_init(QueueHandle_t status_queue) {
-    if (xTaskCreate(buzzer_task, "buzzer_task", 2048, status_queue, 5, NULL) != pdPASS) {
+void buzzer_service_init(void) {
+    internal_q = xQueueCreate(1, sizeof(engine_status_t));
+    if (internal_q == NULL) {
+        ESP_LOGE(TAG, "Failed to create internal queue");
+        return;
+    }
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(POMODORO_EVENTS, 
+                                                        POMODORO_EVENT_STATE_UPDATE, 
+                                                        &buzzer_event_handler, 
+                                                        NULL, 
+                                                        NULL));
+
+    if (xTaskCreate(buzzer_task, "buzzer_task", 2048, NULL, 5, NULL) != pdPASS) {
         ESP_LOGE(TAG, "Failed to create buzzer task");
     }
 }
