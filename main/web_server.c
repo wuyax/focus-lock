@@ -1,3 +1,8 @@
+/**
+ * @file web_server.c
+ * @brief Implementation of the web server for configuration and status.
+ */
+
 #include <string.h>
 #include <stdlib.h>
 #include "web_server.h"

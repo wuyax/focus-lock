@@ -1,3 +1,7 @@
+/**
+ * @brief RTC service for managing real-time clock hardware.
+ */
+
 #pragma once
 #include <time.h>
 #include "esp_err.h"

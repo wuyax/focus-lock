@@ -1,3 +1,8 @@
+/**
+ * @file usb_hid_service.c
+ * @brief Implementation of the USB HID service for sending keyboard shortcuts.
+ */
+
 #include "usb_hid_service.h"
 #include "pomodoro_engine.h"
 #include "config_mgr.h"

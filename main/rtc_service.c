@@ -1,3 +1,8 @@
+/**
+ * @file rtc_service.c
+ * @brief Implementation of the RTC service for time management.
+ */
+
 #include "rtc_service.h"
 #include "i2c_manager.h"
 #include "esp_log.h"

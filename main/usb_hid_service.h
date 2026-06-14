@@ -1,3 +1,7 @@
+/**
+ * @brief USB HID service for keyboard emulation.
+ */
+
 #pragma once
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"

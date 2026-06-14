@@ -1,3 +1,8 @@
+/**
+ * @file dns_server.c
+ * @brief Implementation of a simple DNS server for captive portal support.
+ */
+
 #include <string.h>
 #include <sys/param.h>
 #include "freertos/FreeRTOS.h"
