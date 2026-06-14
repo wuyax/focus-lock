@@ -1,3 +1,8 @@
+/**
+ * @file rgb_service.c
+ * @brief Visual feedback using a WS2812 RGB LED.
+ */
+
 #include "rgb_service.h"
 #include "pomodoro_engine.h"
 #include "led_strip.h"

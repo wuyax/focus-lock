@@ -1,3 +1,8 @@
+/**
+ * @file buzzer_service.c
+ * @brief Audible feedback using a GPIO-controlled buzzer.
+ */
+
 #include "buzzer_service.h"
 #include "pomodoro_engine.h"
 #include "config_mgr.h"

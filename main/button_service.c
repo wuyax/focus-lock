@@ -1,3 +1,8 @@
+/**
+ * @file button_service.c
+ * @brief Handles GPIO button input with debounce and multi-click detection.
+ */
+
 #include "button_service.h"
 #include "pomodoro_engine.h"
 #include "buzzer_service.h"
