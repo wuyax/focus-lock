@@ -14,8 +14,6 @@
 #include "rtc_service.h"
 #include "buzzer_service.h"
 
-extern void test_shortcut_parser();
-
 static const char *TAG = "main";
 focuslock_config_t global_config;
 focuslock_stats_t global_stats;
@@ -30,8 +28,6 @@ void app_main(void)
     
     ESP_LOGI(TAG, "Config loaded. Work: %lu min, Rest: %lu min", 
              global_config.work_time_min, global_config.rest_time_min);
-             
-    test_shortcut_parser();
 
     ESP_ERROR_CHECK(i2c_manager_init());
     ESP_ERROR_CHECK(rtc_service_init());
