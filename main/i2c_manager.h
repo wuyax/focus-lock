@@ -7,4 +7,8 @@
 
 extern i2c_master_bus_handle_t i2c_bus_handle;
 
+/**
+ * @brief Initializes the I2C master bus.
+ * @return ESP_OK on success, or error code on failure.
+ */
 esp_err_t i2c_manager_init(void);

@@ -1,3 +1,8 @@
+/**
+ * @file config_mgr.c
+ * @brief Configuration and statistics management using NVS flash.
+ */
+
 #include "config_mgr.h"
 #include "nvs_flash.h"
 #include "nvs.h"

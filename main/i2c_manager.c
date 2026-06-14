@@ -1,3 +1,8 @@
+/**
+ * @file i2c_manager.c
+ * @brief I2C bus initialization and management.
+ */
+
 #include "i2c_manager.h"
 #include "esp_log.h"
 #include "driver/gpio.h"

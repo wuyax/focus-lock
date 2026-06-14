@@ -1,3 +1,8 @@
+/**
+ * @file shortcut_parser.c
+ * @brief Parses human-readable shortcut strings into HID modifiers and keycodes.
+ */
+
 #include "shortcut_parser.h"
 #include <string.h>
 #include <ctype.h>
