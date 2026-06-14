@@ -11,6 +11,8 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 
+ESP_EVENT_DEFINE_BASE(POMODORO_EVENTS);
+
 static const char *TAG = "engine";
 
 /* External dependencies for configuration and statistics */
@@ -46,6 +48,7 @@ static void update_status_and_notify(void) {
     if (status_queue) {
         xQueueOverwrite(status_queue, &current_status);
     }
+    esp_event_post(POMODORO_EVENTS, POMODORO_EVENT_STATE_UPDATE, &current_status, sizeof(engine_status_t), portMAX_DELAY);
 }
 
 /**

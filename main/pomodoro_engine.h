@@ -7,6 +7,13 @@
 #include <stdint.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
+#include "esp_event.h"
+
+ESP_EVENT_DECLARE_BASE(POMODORO_EVENTS);
+
+typedef enum {
+    POMODORO_EVENT_STATE_UPDATE
+} pomodoro_event_id_t;
 
 /**
  * @brief Focus states for the Pomodoro engine.
