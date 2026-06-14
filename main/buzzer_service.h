@@ -1,3 +1,8 @@
+/**
+ * @file buzzer_service.h
+ * @brief Header for buzzer service.
+ */
+
 #pragma once
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"

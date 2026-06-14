@@ -1,3 +1,8 @@
+/**
+ * @file shortcut_parser.h
+ * @brief Header for shortcut parser.
+ */
+
 #ifndef SHORTCUT_PARSER_H
 #define SHORTCUT_PARSER_H
 

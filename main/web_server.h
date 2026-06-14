@@ -1,4 +1,5 @@
 /**
+ * @file web_server.h
  * @brief Web server service for the configuration portal.
  */
 

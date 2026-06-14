@@ -1,4 +1,5 @@
 /**
+ * @file dns_server.h
  * @brief DNS server service for redirecting requests to the captive portal.
  */
 

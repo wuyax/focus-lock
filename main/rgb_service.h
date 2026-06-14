@@ -1,3 +1,8 @@
+/**
+ * @file rgb_service.h
+ * @brief Header for RGB LED service.
+ */
+
 #pragma once
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"

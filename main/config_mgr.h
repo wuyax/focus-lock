@@ -1,23 +1,34 @@
+/**
+ * @file config_mgr.h
+ * @brief Configuration manager for storing and retrieving settings from NVS.
+ */
+
 #pragma once
 #include <stdint.h>
 #include <stdbool.h>
 #include "esp_err.h"
 
+/**
+ * @brief Configuration structure for FocusLock.
+ */
 typedef struct {
-    uint32_t work_time_min;
-    uint32_t rest_time_min;
-    uint32_t warning_time_sec;
-    char lock_shortcut[16];
-    bool repeat_lock;
-    uint32_t repeat_interval_sec;
-    bool buzzer_enabled;
-    uint8_t led_brightness;
+    uint32_t work_time_min;      /**< Duration of work phase in minutes. */
+    uint32_t rest_time_min;      /**< Duration of rest phase in minutes. */
+    uint32_t warning_time_sec;   /**< Warning time before phase ends in seconds. */
+    char lock_shortcut[16];      /**< USB HID shortcut string to lock the screen. */
+    bool repeat_lock;            /**< Whether to repeat the lock command during rest. */
+    uint32_t repeat_interval_sec; /**< Interval between repeated lock commands. */
+    bool buzzer_enabled;         /**< Whether the buzzer is enabled. */
+    uint8_t led_brightness;      /**< RGB LED brightness (0-255). */
 } focuslock_config_t;
 
+/**
+ * @brief Statistics structure for tracking usage.
+ */
 typedef struct {
-    uint32_t total_pomodoros;
-    uint32_t total_work_min;
-    uint32_t total_rest_min;
+    uint32_t total_pomodoros;    /**< Total number of completed work phases. */
+    uint32_t total_work_min;     /**< Total accumulated work time in minutes. */
+    uint32_t total_rest_min;     /**< Total accumulated rest time in minutes. */
 } focuslock_stats_t;
 
 /**

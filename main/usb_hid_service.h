@@ -1,4 +1,5 @@
 /**
+ * @file usb_hid_service.h
  * @brief USB HID service for keyboard emulation.
  */
 

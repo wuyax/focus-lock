@@ -1,3 +1,8 @@
+/**
+ * @file button_service.h
+ * @brief Header for button service.
+ */
+
 #pragma once
 
 /**

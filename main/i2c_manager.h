@@ -1,3 +1,8 @@
+/**
+ * @file i2c_manager.h
+ * @brief I2C master bus manager.
+ */
+
 #pragma once
 #include "driver/i2c_master.h"
 #include "esp_err.h"

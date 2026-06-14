@@ -1,4 +1,5 @@
 /**
+ * @file rtc_service.h
  * @brief RTC service for managing real-time clock hardware.
  */
 
@@ -6,10 +7,13 @@
 #include <time.h>
 #include "esp_err.h"
 
+/**
+ * @brief Structure representing RTC time.
+ */
 typedef struct {
-    int hour;
-    int minute;
-    int second;
+    int hour;    /**< Hour (0-23). */
+    int minute;  /**< Minute (0-59). */
+    int second;  /**< Second (0-59). */
 } rtc_time_t;
 
 /**

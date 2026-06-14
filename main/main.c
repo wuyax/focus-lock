@@ -1,3 +1,10 @@
+/**
+ * @file main.c
+ * @brief Entry point for the FocusLock application.
+ * 
+ * This file initializes all services and starts the Pomodoro engine.
+ */
+
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
