@@ -170,8 +170,8 @@ static void engine_task(void *arg) {
                     break;
                     
                 case EVT_CLICK:
-                    // Single click toggles Pause when in Work state
-                    if (current_status.state == STATE_WORK) {
+                    // Single click toggles Pause when in Work state (but not in the last 30 seconds)
+                    if (current_status.state == STATE_WORK && current_status.remaining_sec > 30) {
                         save_context(&pause_backup);
                         transition_to(STATE_PAUSE);
                     } else if (current_status.state == STATE_PAUSE) {
