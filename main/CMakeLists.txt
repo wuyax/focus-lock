@@ -4,4 +4,4 @@ idf_component_register(SRCS "buzzer_service.c" "rtc_service.c" "main.c" "config_
 
 target_add_binary_data(${COMPONENT_LIB} "web_ui.html" BINARY)
 
-spiffs_create_partition_image(storage ../data FLASH_IN_PROJECT)
+spiffs_create_partition_image(storage ../data)
