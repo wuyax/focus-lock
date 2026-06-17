@@ -27,13 +27,14 @@ static uint8_t bcd2dec(uint8_t val) { return ((val / 16 * 10) + (val % 16)); }
 static uint8_t dec2bcd(uint8_t val) { return ((val / 10 * 16) + (val % 10)); }
 
 esp_err_t rtc_get_time(rtc_time_t *time) {
-    uint8_t data[3];
+    uint8_t data[4];
     uint8_t reg = 0x00;
-    esp_err_t ret = i2c_master_transmit_receive(rtc_dev_handle, &reg, 1, data, 3, -1);
+    esp_err_t ret = i2c_master_transmit_receive(rtc_dev_handle, &reg, 1, data, 4, -1);
     if (ret == ESP_OK) {
         time->second = bcd2dec(data[0] & 0x7F);
         time->minute = bcd2dec(data[1]);
         time->hour = bcd2dec(data[2] & 0x3F);
+        time->weekday = data[3] - 1; // 1-7 to 0-6
     } else {
         ESP_LOGE(TAG, "Failed to read time from RTC: 0x%x", ret);
     }
@@ -41,11 +42,12 @@ esp_err_t rtc_get_time(rtc_time_t *time) {
 }
 
 esp_err_t rtc_set_time(const rtc_time_t *time) {
-    uint8_t data[4];
+    uint8_t data[5];
     data[0] = 0x00; // Start register address
     data[1] = dec2bcd(time->second);
     data[2] = dec2bcd(time->minute);
     data[3] = dec2bcd(time->hour);
+    data[4] = (uint8_t)(time->weekday + 1); // 0-6 to 1-7
     
-    return i2c_master_transmit(rtc_dev_handle, data, 4, -1);
+    return i2c_master_transmit(rtc_dev_handle, data, 5, -1);
 }

@@ -6,6 +6,7 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
@@ -21,6 +22,7 @@
 #include "i2c_manager.h"
 #include "rtc_service.h"
 #include "buzzer_service.h"
+#include "scheduler_service.h"
 
 static const char *TAG = "main";
 focuslock_config_t global_config;
@@ -33,7 +35,7 @@ static void main_event_handler(void* handler_args, esp_event_base_t base, int32_
     uint32_t mins = status->remaining_sec / 60;
     uint32_t secs = status->remaining_sec % 60;
     ESP_LOGI(TAG, "Status: [%s] Time: %02lu:%02lu", 
-             state_names[status->state], mins, secs);
+             state_names[status->state], (unsigned long)mins, (unsigned long)secs);
 }
 
 void app_main(void)
@@ -47,7 +49,7 @@ void app_main(void)
     config_mgr_load_stats(&global_stats);
     
     ESP_LOGI(TAG, "Config loaded. Work: %lu min, Rest: %lu min", 
-             global_config.work_time_min, global_config.rest_time_min);
+             (unsigned long)global_config.work_time_min, (unsigned long)global_config.rest_time_min);
 
     ESP_ERROR_CHECK(i2c_manager_init());
     ESP_ERROR_CHECK(rtc_service_init());
@@ -59,6 +61,7 @@ void app_main(void)
     network_service_init();
     buzzer_service_init();
     button_service_init();
+    scheduler_service_init();
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register(POMODORO_EVENTS, 
                                                         POMODORO_EVENT_STATE_UPDATE, 

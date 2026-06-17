@@ -11,6 +11,7 @@
 #include "cJSON.h"
 #include "config_mgr.h"
 #include "rtc_service.h"
+#include "scheduler_service.h"
 
 static const char *TAG = "web_server";
 static httpd_handle_t server = NULL;
@@ -108,10 +109,134 @@ static esp_err_t time_sync_handler(httpd_req_t *req) {
         time.hour = cJSON_GetObjectItem(root, "hour")->valueint;
         time.minute = cJSON_GetObjectItem(root, "minute")->valueint;
         time.second = cJSON_GetObjectItem(root, "second")->valueint;
+        
+        cJSON *weekday_item = cJSON_GetObjectItem(root, "weekday");
+        if (weekday_item) {
+            time.weekday = weekday_item->valueint;
+        } else {
+            time.weekday = 0; // Default to Monday if not provided
+        }
+
         rtc_set_time(&time);
         cJSON_Delete(root);
-        ESP_LOGI(TAG, "RTC Time Synced: %02d:%02d:%02d", time.hour, time.minute, time.second);
+        ESP_LOGI(TAG, "RTC Time Synced: %02d:%02d:%02d weekday=%d", 
+                 time.hour, time.minute, time.second, time.weekday);
+        
+        // Also notify scheduler in case weekday changed
+        scheduler_service_reload();
     }
+    httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
+    return ESP_OK;
+}
+
+static esp_err_t schedule_get_handler(httpd_req_t *req) {
+    full_schedule_t schedule;
+    config_mgr_load_schedule(&schedule);
+
+    cJSON *root = cJSON_CreateObject();
+    
+    // Modes
+    cJSON *modes = cJSON_CreateArray();
+    for (int i = 0; i < schedule.mode_count; i++) {
+        cJSON *item = cJSON_CreateObject();
+        cJSON_AddNumberToObject(item, "id", schedule.modes[i].id);
+        cJSON_AddStringToObject(item, "name", schedule.modes[i].name);
+        cJSON_AddNumberToObject(item, "work_min", schedule.modes[i].work_min);
+        cJSON_AddNumberToObject(item, "rest_min", schedule.modes[i].rest_min);
+        cJSON_AddNumberToObject(item, "warn_sec", schedule.modes[i].warn_sec);
+        cJSON_AddItemToArray(modes, item);
+    }
+    cJSON_AddItemToObject(root, "modes", modes);
+
+    // Weekly
+    cJSON *weekly = cJSON_CreateArray();
+    for (int i = 0; i < 7; i++) {
+        cJSON *day_arr = cJSON_CreateArray();
+        for (int j = 0; j < schedule.weekly[i].count; j++) {
+            cJSON *block = cJSON_CreateObject();
+            cJSON_AddStringToObject(block, "start", schedule.weekly[i].blocks[j].start);
+            cJSON_AddStringToObject(block, "end", schedule.weekly[i].blocks[j].end);
+            cJSON_AddNumberToObject(block, "mode_id", schedule.weekly[i].blocks[j].mode_id);
+            cJSON_AddItemToArray(day_arr, block);
+        }
+        cJSON_AddItemToArray(weekly, day_arr);
+    }
+    cJSON_AddItemToObject(root, "weekly", weekly);
+
+    const char *json_str = cJSON_PrintUnformatted(root);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr(req, json_str);
+    
+    cJSON_Delete(root);
+    free((void*)json_str);
+    return ESP_OK;
+}
+
+static esp_err_t schedule_post_handler(httpd_req_t *req) {
+    char *buf = malloc(req->content_len + 1);
+    if (!buf) {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Memory allocation failed");
+        return ESP_FAIL;
+    }
+
+    int ret = httpd_req_recv(req, buf, req->content_len);
+    if (ret <= 0) {
+        free(buf);
+        return ESP_FAIL;
+    }
+    buf[ret] = '\0';
+
+    cJSON *root = cJSON_Parse(buf);
+    if (!root) {
+        free(buf);
+        return ESP_FAIL;
+    }
+
+    full_schedule_t schedule;
+    memset(&schedule, 0, sizeof(full_schedule_t));
+
+    // Parse modes
+    cJSON *modes = cJSON_GetObjectItem(root, "modes");
+    if (cJSON_IsArray(modes)) {
+        schedule.mode_count = cJSON_GetArraySize(modes);
+        if (schedule.mode_count > 4) schedule.mode_count = 4;
+        for (int i = 0; i < schedule.mode_count; i++) {
+            cJSON *item = cJSON_GetArrayItem(modes, i);
+            schedule.modes[i].id = cJSON_GetObjectItem(item, "id")->valueint;
+            strncpy(schedule.modes[i].name, cJSON_GetObjectItem(item, "name")->valuestring, 31);
+            schedule.modes[i].work_min = cJSON_GetObjectItem(item, "work_min")->valueint;
+            schedule.modes[i].rest_min = cJSON_GetObjectItem(item, "rest_min")->valueint;
+            schedule.modes[i].warn_sec = cJSON_GetObjectItem(item, "warn_sec")->valueint;
+        }
+    }
+
+    // Parse weekly
+    cJSON *weekly = cJSON_GetObjectItem(root, "weekly");
+    if (cJSON_IsArray(weekly)) {
+        int days = cJSON_GetArraySize(weekly);
+        if (days > 7) days = 7;
+        for (int i = 0; i < days; i++) {
+            cJSON *day_arr = cJSON_GetArrayItem(weekly, i);
+            if (cJSON_IsArray(day_arr)) {
+                schedule.weekly[i].count = cJSON_GetArraySize(day_arr);
+                if (schedule.weekly[i].count > 8) schedule.weekly[i].count = 8;
+                for (int j = 0; j < schedule.weekly[i].count; j++) {
+                    cJSON *block = cJSON_GetArrayItem(day_arr, j);
+                    strncpy(schedule.weekly[i].blocks[j].start, cJSON_GetObjectItem(block, "start")->valuestring, 5);
+                    strncpy(schedule.weekly[i].blocks[j].end, cJSON_GetObjectItem(block, "end")->valuestring, 5);
+                    schedule.weekly[i].blocks[j].mode_id = cJSON_GetObjectItem(block, "mode_id")->valueint;
+                }
+            }
+        }
+    }
+
+    config_mgr_save_schedule(&schedule);
+    
+    ESP_LOGI(TAG, "New schedule saved. Notify scheduler to reload.");
+    scheduler_service_reload();
+
+    cJSON_Delete(root);
+    free(buf);
     httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
     return ESP_OK;
 }
@@ -120,13 +245,16 @@ void web_server_start(void) {
     if (server) return;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.lru_purge_enable = true;
+    config.max_uri_handlers = 12; // Increased to accommodate more handlers
     if (httpd_start(&server, &config) == ESP_OK) {
         httpd_uri_t uri_handlers[] = {
             {"/", HTTP_GET, index_get_handler, NULL},
             {"/api/config", HTTP_GET, config_get_handler, NULL},
             {"/api/config", HTTP_POST, config_post_handler, NULL},
             {"/api/stats", HTTP_GET, stats_get_handler, NULL},
-            {"/api/sync_time", HTTP_POST, time_sync_handler, NULL}
+            {"/api/sync_time", HTTP_POST, time_sync_handler, NULL},
+            {"/api/schedule", HTTP_GET, schedule_get_handler, NULL},
+            {"/api/schedule", HTTP_POST, schedule_post_handler, NULL}
         };
         for (int i = 0; i < sizeof(uri_handlers)/sizeof(httpd_uri_t); i++) {
             httpd_register_uri_handler(server, &uri_handlers[i]);

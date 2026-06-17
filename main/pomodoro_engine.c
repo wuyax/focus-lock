@@ -19,6 +19,14 @@ static const char *TAG = "engine";
 extern focuslock_config_t global_config;
 extern focuslock_stats_t global_stats;
 
+/* Events that can be sent to the Pomodoro engine. */
+typedef struct {
+    engine_event_t type;
+    uint32_t work_min;
+    uint32_t rest_min;
+    uint32_t warn_sec;
+} engine_event_msg_t;
+
 /* Queues for event processing */
 static QueueHandle_t event_queue;
 
@@ -30,6 +38,7 @@ typedef struct {
     focus_state_t state;
     uint32_t remaining_sec;
     uint32_t total_sec;
+    bool pending_exit;
 } saved_state_context_t;
 
 /* Backups to support nested interruptions (e.g. Pause -> Admin -> Pause -> Work) */
@@ -90,6 +99,7 @@ static void save_context(saved_state_context_t *backup) {
     backup->state = current_status.state;
     backup->remaining_sec = current_status.remaining_sec;
     backup->total_sec = current_status.total_sec;
+    backup->pending_exit = current_status.pending_exit;
 }
 
 /**
@@ -100,6 +110,7 @@ static void restore_context(const saved_state_context_t *backup) {
     current_status.state = backup->state;
     current_status.remaining_sec = backup->remaining_sec;
     current_status.total_sec = backup->total_sec;
+    current_status.pending_exit = backup->pending_exit;
     ESP_LOGI(TAG, "Restored state %d, remaining: %lu", backup->state, backup->remaining_sec);
     update_status_and_notify();
 }
@@ -144,9 +155,21 @@ static void handle_tick(void) {
             } else if (current_status.state == STATE_WARNING) {
                 global_stats.total_pomodoros++;
                 config_mgr_save_stats(&global_stats);
-                transition_to(STATE_REST);
+                if (current_status.pending_exit) {
+                    ESP_LOGI(TAG, "Pending exit triggered at end of warning, entering ADMIN (STOP)");
+                    current_status.pending_exit = false;
+                    transition_to(STATE_ADMIN);
+                } else {
+                    transition_to(STATE_REST);
+                }
             } else if (current_status.state == STATE_REST) {
-                transition_to(STATE_WORK); 
+                if (current_status.pending_exit) {
+                    ESP_LOGI(TAG, "Pending exit triggered at end of rest, entering ADMIN (STOP)");
+                    current_status.pending_exit = false;
+                    transition_to(STATE_ADMIN);
+                } else {
+                    transition_to(STATE_WORK); 
+                }
             } else if (current_status.state == STATE_PAUSE) {
                 ESP_LOGI(TAG, "Pause timeout, resetting to WORK");
                 transition_to(STATE_WORK);
@@ -159,12 +182,12 @@ static void handle_tick(void) {
  * @brief Main engine task loop, processing events from the queue.
  */
 static void engine_task(void *arg) {
-    engine_event_t evt;
+    engine_event_msg_t msg;
     transition_to(STATE_WORK);
     
     while(1) {
-        if (xQueueReceive(event_queue, &evt, portMAX_DELAY)) {
-            switch(evt) {
+        if (xQueueReceive(event_queue, &msg, portMAX_DELAY)) {
+            switch(msg.type) {
                 case EVT_TICK:
                     handle_tick();
                     break;
@@ -197,6 +220,22 @@ static void engine_task(void *arg) {
                         restore_context(&admin_backup);
                     }
                     break;
+
+                case EVT_START_MODE:
+                    ESP_LOGI(TAG, "Auto-start mode: work=%lu, rest=%lu, warn=%lu", 
+                             msg.work_min, msg.rest_min, msg.warn_sec);
+                    global_config.work_time_min = msg.work_min;
+                    global_config.rest_time_min = msg.rest_min;
+                    global_config.warning_time_sec = msg.warn_sec;
+                    current_status.pending_exit = false;
+                    transition_to(STATE_WORK);
+                    break;
+
+                case EVT_PENDING_EXIT:
+                    ESP_LOGI(TAG, "Engine marked for pending exit");
+                    current_status.pending_exit = true;
+                    update_status_and_notify();
+                    break;
             }
         }
     }
@@ -206,20 +245,36 @@ static void engine_task(void *arg) {
  * @brief Hardware timer callback generating 1-second ticks.
  */
 static void tick_timer_cb(void* arg) {
-    engine_event_t evt = EVT_TICK;
-    xQueueSendFromISR(event_queue, &evt, NULL); // Send tick to the queue from ISR context
+    engine_event_msg_t msg = { .type = EVT_TICK };
+    xQueueSendFromISR(event_queue, &msg, NULL); // Send tick to the queue from ISR context
 }
 
 void pomodoro_engine_send_event(engine_event_t evt) {
-    xQueueSend(event_queue, &evt, 0);
+    engine_event_msg_t msg = { .type = evt };
+    xQueueSend(event_queue, &msg, 0);
+}
+
+void pomodoro_engine_start_mode(uint32_t work_min, uint32_t rest_min, uint32_t warn_sec) {
+    engine_event_msg_t msg = {
+        .type = EVT_START_MODE,
+        .work_min = work_min,
+        .rest_min = rest_min,
+        .warn_sec = warn_sec
+    };
+    xQueueSend(event_queue, &msg, 0);
+}
+
+void pomodoro_engine_pending_exit(void) {
+    engine_event_msg_t msg = { .type = EVT_PENDING_EXIT };
+    xQueueSend(event_queue, &msg, 0);
 }
 
 void pomodoro_engine_init(void) {
     // Create queues for event receiving
-    event_queue = xQueueCreate(10, sizeof(engine_event_t));
+    event_queue = xQueueCreate(10, sizeof(engine_event_msg_t));
     
     // Initialize 1-second hardware timer
-    const esp_timer_create_args_t tick_args = {
+...    const esp_timer_create_args_t tick_args = {
         .callback = &tick_timer_cb,
         .name = "engine_tick"
     };

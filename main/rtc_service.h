@@ -14,6 +14,7 @@ typedef struct {
     int hour;    /**< Hour (0-23). */
     int minute;  /**< Minute (0-59). */
     int second;  /**< Second (0-59). */
+    int weekday; /**< Day of week (0-6, 0=Mon, ..., 6=Sun). */
 } rtc_time_t;
 
 /**

@@ -430,6 +430,126 @@
             margin: var(--spacing-lg) 0;
         }
 
+        /* Schedule Editor Styles */
+        .schedule-section {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .mode-item {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            padding: var(--spacing-md);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .mode-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .day-tabs {
+            display: flex;
+            overflow-x: auto;
+            gap: var(--spacing-xs);
+            padding-bottom: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+            scrollbar-width: none;
+        }
+
+        .day-tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .day-tab {
+            padding: 8px 12px;
+            background: var(--surface-hover);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 13px;
+            white-space: nowrap;
+            transition: all var(--transition);
+        }
+
+        .day-tab.active {
+            background: var(--accent-color);
+            color: var(--accent-text);
+            border-color: var(--accent-color);
+        }
+
+        .block-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            padding: var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .block-item input[type="time"] {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .block-item select {
+            flex: 1;
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .btn-icon {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all var(--transition);
+        }
+
+        .btn-icon:hover {
+            background: var(--surface-hover);
+            color: var(--error-text);
+        }
+
+        .btn-add {
+            width: 100%;
+            background: transparent;
+            border: 1px dashed var(--border-color);
+            color: var(--text-secondary);
+            padding: 8px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 13px;
+            transition: all var(--transition);
+            margin-top: var(--spacing-sm);
+        }
+
+        .btn-add:hover {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+        }
+
         @media (max-width: 480px) {
             body {
                 padding: var(--spacing-md);
@@ -574,6 +694,36 @@
                 Save Configuration
             </button>
         </form>
+
+        <div class="card">
+            <h2 class="section-title">Schedule Modes</h2>
+            <div id="modes-container" class="schedule-section">
+                <!-- Modes will be rendered here -->
+            </div>
+            <button type="button" class="btn-add" id="add-mode-btn">+ Add Focus Mode</button>
+        </div>
+
+        <div class="card">
+            <h2 class="section-title">Weekly Schedule</h2>
+            <div class="day-tabs" id="day-tabs">
+                <div class="day-tab active" data-day="0">Mon</div>
+                <div class="day-tab" data-day="1">Tue</div>
+                <div class="day-tab" data-day="2">Wed</div>
+                <div class="day-tab" data-day="3">Thu</div>
+                <div class="day-tab" data-day="4">Fri</div>
+                <div class="day-tab" data-day="5">Sat</div>
+                <div class="day-tab" data-day="6">Sun</div>
+            </div>
+            <div id="blocks-container" class="schedule-section">
+                <!-- Blocks for selected day will be rendered here -->
+            </div>
+            <button type="button" class="btn-add" id="add-block-btn">+ Add Time Block</button>
+            <div class="divider"></div>
+            <button type="button" id="save-schedule-btn" style="width: 100%; background-color: var(--accent-color); color: var(--accent-text); border: none; padding: 14px 20px; border-radius: var(--radius-md); font-size: 16px; font-weight: 600; cursor: pointer; transition: all var(--transition); display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                Save Weekly Schedule
+            </button>
+        </div>
     </div>
 
     <script>
@@ -582,6 +732,20 @@
             const repeatIntervalGroup = document.getElementById('repeat_interval_group');
             const brightnessSlider = document.getElementById('led_brightness');
             const brightnessVal = document.getElementById('brightness-val');
+
+            // Schedule Editor State
+            let currentSchedule = {
+                modes: [],
+                weekly: [[], [], [], [], [], [], []]
+            };
+            let activeDay = 0;
+
+            const modesContainer = document.getElementById('modes-container');
+            const blocksContainer = document.getElementById('blocks-container');
+            const dayTabs = document.querySelectorAll('.day-tab');
+            const addModeBtn = document.getElementById('add-mode-btn');
+            const addBlockBtn = document.getElementById('add-block-btn');
+            const saveScheduleBtn = document.getElementById('save-schedule-btn');
 
             // Populate shortcut keys robustly
             const keySelect = document.getElementById('shortcut_key');
@@ -776,6 +940,178 @@
             
             // Refresh stats every 30 seconds
             setInterval(fetchStats, 30000);
+
+            // Schedule Editor Functions
+            async function fetchSchedule() {
+                try {
+                    const response = await fetch('/api/schedule');
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    currentSchedule = await response.json();
+                    renderModes();
+                    renderBlocks();
+                } catch (err) {
+                    console.error('Failed to fetch schedule', err);
+                }
+            }
+
+            function renderModes() {
+                modesContainer.innerHTML = '';
+                currentSchedule.modes.forEach((mode, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'mode-item';
+                    div.innerHTML = `
+                        <div class="mode-header">
+                            <input type="text" value="${mode.name}" placeholder="Mode Name" style="flex: 1; margin-right: 8px;" onchange="updateModeName(${index}, this.value)">
+                            <button class="btn-icon" onclick="removeMode(${index})">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                            </button>
+                        </div>
+                        <div class="form-row" style="margin-bottom: 0;">
+                            <div class="form-group" style="margin-right: 8px;">
+                                <label style="font-size: 11px;">Work</label>
+                                <div class="input-wrapper">
+                                    <input type="number" value="${mode.work_min}" onchange="updateMode(${index}, 'work_min', this.value)" style="padding: 8px 10px; font-size: 14px;">
+                                    <span class="input-suffix">m</span>
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-right: 8px;">
+                                <label style="font-size: 11px;">Rest</label>
+                                <div class="input-wrapper">
+                                    <input type="number" value="${mode.rest_min}" onchange="updateMode(${index}, 'rest_min', this.value)" style="padding: 8px 10px; font-size: 14px;">
+                                    <span class="input-suffix">m</span>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label style="font-size: 11px;">Warn</label>
+                                <div class="input-wrapper">
+                                    <input type="number" value="${mode.warn_sec}" onchange="updateMode(${index}, 'warn_sec', this.value)" style="padding: 8px 10px; font-size: 14px;">
+                                    <span class="input-suffix">s</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    modesContainer.appendChild(div);
+                });
+            }
+
+            function renderBlocks() {
+                blocksContainer.innerHTML = '';
+                const dayBlocks = currentSchedule.weekly[activeDay] || [];
+                dayBlocks.forEach((block, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'block-item';
+                    
+                    let modeOptions = currentSchedule.modes.map(m => 
+                        `<option value="${m.id}" ${m.id === block.mode_id ? 'selected' : ''}>${m.name}</option>`
+                    ).join('');
+
+                    div.innerHTML = `
+                        <input type="time" value="${block.start}" onchange="updateBlock(${index}, 'start', this.value)">
+                        <span style="color: var(--text-secondary)">to</span>
+                        <input type="time" value="${block.end}" onchange="updateBlock(${index}, 'end', this.value)">
+                        <select onchange="updateBlock(${index}, 'mode_id', this.value)">
+                            ${modeOptions}
+                        </select>
+                        <button class="btn-icon" onclick="removeBlock(${index})">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                        </button>
+                    `;
+                    blocksContainer.appendChild(div);
+                });
+            }
+
+            window.updateModeName = (index, name) => {
+                currentSchedule.modes[index].name = name;
+            };
+
+            window.updateMode = (index, field, value) => {
+                currentSchedule.modes[index][field] = parseInt(value);
+            };
+
+            window.removeMode = (index) => {
+                currentSchedule.modes.splice(index, 1);
+                renderModes();
+                renderBlocks();
+            };
+
+            window.updateBlock = (index, field, value) => {
+                const val = field === 'mode_id' ? parseInt(value) : value;
+                currentSchedule.weekly[activeDay][index][field] = val;
+            };
+
+            window.removeBlock = (index) => {
+                currentSchedule.weekly[activeDay].splice(index, 1);
+                renderBlocks();
+            };
+
+            addModeBtn.addEventListener('click', () => {
+                if (currentSchedule.modes.length >= 4) {
+                    showMessage('Max 4 modes allowed', 'error');
+                    return;
+                }
+                const newId = currentSchedule.modes.length > 0 ? Math.max(...currentSchedule.modes.map(m => m.id)) + 1 : 1;
+                currentSchedule.modes.push({
+                    id: newId,
+                    name: 'New Mode',
+                    work_min: 45,
+                    rest_min: 5,
+                    warn_sec: 30
+                });
+                renderModes();
+                renderBlocks();
+            });
+
+            addBlockBtn.addEventListener('click', () => {
+                if (currentSchedule.weekly[activeDay].length >= 8) {
+                    showMessage('Max 8 blocks per day', 'error');
+                    return;
+                }
+                if (currentSchedule.modes.length === 0) {
+                    showMessage('Please add a mode first', 'error');
+                    return;
+                }
+                currentSchedule.weekly[activeDay].push({
+                    start: '09:00',
+                    end: '10:00',
+                    mode_id: currentSchedule.modes[0].id
+                });
+                renderBlocks();
+            });
+
+            dayTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    dayTabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    activeDay = parseInt(tab.dataset.day);
+                    renderBlocks();
+                });
+            });
+
+            saveScheduleBtn.addEventListener('click', async () => {
+                saveScheduleBtn.disabled = true;
+                const originalText = saveScheduleBtn.innerText;
+                saveScheduleBtn.innerText = 'Saving...';
+                
+                try {
+                    const response = await fetch('/api/schedule', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(currentSchedule)
+                    });
+                    if (response.ok) {
+                        showMessage('Schedule saved successfully', 'success');
+                    } else {
+                        throw new Error('Failed to save schedule');
+                    }
+                } catch (err) {
+                    showMessage(err.message, 'error');
+                } finally {
+                    saveScheduleBtn.disabled = false;
+                    saveScheduleBtn.innerText = originalText;
+                }
+            });
+
+            fetchSchedule();
         });
     </script>
 </body>
