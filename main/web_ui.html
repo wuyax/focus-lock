@@ -1099,12 +1099,12 @@
                         body: JSON.stringify(currentSchedule)
                     });
                     if (response.ok) {
-                        showMessage('Schedule saved successfully', 'success');
+                        showMessage('Weekly schedule saved successfully', 'success');
                     } else {
                         throw new Error('Failed to save schedule');
                     }
                 } catch (err) {
-                    showMessage(err.message, 'error');
+                    showMessage('Error: ' + err.message, 'error');
                 } finally {
                     saveScheduleBtn.disabled = false;
                     saveScheduleBtn.innerText = originalText;
