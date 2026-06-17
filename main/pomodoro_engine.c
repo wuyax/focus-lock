@@ -246,7 +246,7 @@ static void engine_task(void *arg) {
  */
 static void tick_timer_cb(void* arg) {
     engine_event_msg_t msg = { .type = EVT_TICK };
-    xQueueSendFromISR(event_queue, &msg, NULL); // Send tick to the queue from ISR context
+    xQueueSend(event_queue, &msg, 0); // Send tick to the queue
 }
 
 void pomodoro_engine_send_event(engine_event_t evt) {
@@ -274,7 +274,7 @@ void pomodoro_engine_init(void) {
     event_queue = xQueueCreate(10, sizeof(engine_event_msg_t));
     
     // Initialize 1-second hardware timer
-...    const esp_timer_create_args_t tick_args = {
+    const esp_timer_create_args_t tick_args = {
         .callback = &tick_timer_cb,
         .name = "engine_tick"
     };

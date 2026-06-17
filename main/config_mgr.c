@@ -136,11 +136,12 @@ static esp_err_t write_string_to_file(const char *path, const char *str) {
 }
 
 esp_err_t config_mgr_load_schedule(full_schedule_t *schedule) {
+    memset(schedule, 0, sizeof(full_schedule_t));
+    
     char *json_str = NULL;
     esp_err_t ret = read_file_to_string(SCHEDULE_PATH, &json_str);
     if (ret != ESP_OK) {
         ESP_LOGW(TAG, "Schedule file not found or empty, providing empty schedule");
-        memset(schedule, 0, sizeof(full_schedule_t));
         return ret;
     }
 
