@@ -6,11 +6,13 @@
 #include "rgb_service.h"
 #include "pomodoro_engine.h"
 #include "led_strip.h"
+#include "config_mgr.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
 #define WS2812_GPIO 8
 static led_strip_handle_t led_strip;
+extern focuslock_config_t global_config;
 
 static void init_ws2812(void) {
     led_strip_config_t strip_config = {
@@ -46,22 +48,27 @@ static void rgb_task(void *arg) {
             local_state = status.state;
         }
 
+        uint8_t br = global_config.led_brightness;
+
         switch(local_state) {
             case STATE_WORK:
-                led_strip_set_pixel(led_strip, 0, 0, 255, 0); 
+                led_strip_set_pixel(led_strip, 0, 0, br, 0); 
                 break;
             case STATE_WARNING:
-                led_strip_set_pixel(led_strip, 0, breath_val, breath_val, 0);
-                breath_val += breath_dir;
-                if (breath_val >= 250) breath_dir = -5;
-                else if (breath_val <= 5) breath_dir = 5;
+                {
+                    uint32_t scaled_breath = (breath_val * br) / 255;
+                    led_strip_set_pixel(led_strip, 0, scaled_breath, scaled_breath, 0);
+                    breath_val += breath_dir;
+                    if (breath_val >= 250) breath_dir = -5;
+                    else if (breath_val <= 5) breath_dir = 5;
+                }
                 break;
             case STATE_REST:
-                led_strip_set_pixel(led_strip, 0, 255, 0, 0); 
+                led_strip_set_pixel(led_strip, 0, br, 0, 0); 
                 break;
             case STATE_PAUSE:
             case STATE_ADMIN:
-                led_strip_set_pixel(led_strip, 0, 0, 0, 255); 
+                led_strip_set_pixel(led_strip, 0, 0, 0, br); 
                 break;
         }
         led_strip_refresh(led_strip);
