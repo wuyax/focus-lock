@@ -992,10 +992,13 @@
 
             async function syncTime() {
                 const now = new Date();
+                const jsDay = now.getDay();
+                const weekday = (jsDay + 6) % 7; // Map 0=Sun..6=Sat to 0=Mon..6=Sun
                 const timeData = {
                     hour: now.getHours(),
                     minute: now.getMinutes(),
-                    second: now.getSeconds()
+                    second: now.getSeconds(),
+                    weekday: weekday
                 };
                 try {
                     await fetch('/api/sync_time', {
