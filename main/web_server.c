@@ -104,27 +104,40 @@ static esp_err_t time_sync_handler(httpd_req_t *req) {
     if (ret <= 0) return ESP_FAIL;
     buf[ret] = '\0';
     cJSON *root = cJSON_Parse(buf);
-    if (root) {
-        rtc_time_t time;
-        time.hour = cJSON_GetObjectItem(root, "hour")->valueint;
-        time.minute = cJSON_GetObjectItem(root, "minute")->valueint;
-        time.second = cJSON_GetObjectItem(root, "second")->valueint;
-        
-        cJSON *weekday_item = cJSON_GetObjectItem(root, "weekday");
-        if (weekday_item) {
-            time.weekday = weekday_item->valueint;
-        } else {
-            time.weekday = 0; // Default to Monday if not provided
-        }
-
-        rtc_set_time(&time);
-        cJSON_Delete(root);
-        ESP_LOGI(TAG, "RTC Time Synced: %02d:%02d:%02d weekday=%d", 
-                 time.hour, time.minute, time.second, time.weekday);
-        
-        // Also notify scheduler in case weekday changed
-        scheduler_service_reload();
+    if (!root) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
+        return ESP_FAIL;
     }
+
+    rtc_time_t time;
+    cJSON *hour_item = cJSON_GetObjectItem(root, "hour");
+    cJSON *min_item = cJSON_GetObjectItem(root, "minute");
+    cJSON *sec_item = cJSON_GetObjectItem(root, "second");
+
+    if (!cJSON_IsNumber(hour_item) || !cJSON_IsNumber(min_item) || !cJSON_IsNumber(sec_item)) {
+        cJSON_Delete(root);
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing or invalid time parameters");
+        return ESP_FAIL;
+    }
+    time.hour = hour_item->valueint;
+    time.minute = min_item->valueint;
+    time.second = sec_item->valueint;
+    
+    cJSON *weekday_item = cJSON_GetObjectItem(root, "weekday");
+    if (weekday_item && cJSON_IsNumber(weekday_item)) {
+        time.weekday = weekday_item->valueint;
+    } else {
+        time.weekday = 0; // Default to Monday if not provided
+    }
+
+    rtc_set_time(&time);
+    cJSON_Delete(root);
+    ESP_LOGI(TAG, "RTC Time Synced: %02d:%02d:%02d weekday=%d", 
+             time.hour, time.minute, time.second, time.weekday);
+    
+    // Also notify scheduler in case weekday changed
+    scheduler_service_reload();
+
     httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
     return ESP_OK;
 }
@@ -202,12 +215,31 @@ static esp_err_t schedule_post_handler(httpd_req_t *req) {
         if (schedule.mode_count > 4) schedule.mode_count = 4;
         for (int i = 0; i < schedule.mode_count; i++) {
             cJSON *item = cJSON_GetArrayItem(modes, i);
-            schedule.modes[i].id = cJSON_GetObjectItem(item, "id")->valueint;
-            strncpy(schedule.modes[i].name, cJSON_GetObjectItem(item, "name")->valuestring, 31);
-            schedule.modes[i].work_min = cJSON_GetObjectItem(item, "work_min")->valueint;
-            schedule.modes[i].rest_min = cJSON_GetObjectItem(item, "rest_min")->valueint;
-            schedule.modes[i].warn_sec = cJSON_GetObjectItem(item, "warn_sec")->valueint;
+            cJSON *id_item = cJSON_GetObjectItem(item, "id");
+            cJSON *name_item = cJSON_GetObjectItem(item, "name");
+            cJSON *work_item = cJSON_GetObjectItem(item, "work_min");
+            cJSON *rest_item = cJSON_GetObjectItem(item, "rest_min");
+            cJSON *warn_item = cJSON_GetObjectItem(item, "warn_sec");
+
+            if (!cJSON_IsNumber(id_item) || !cJSON_IsString(name_item) || 
+                !cJSON_IsNumber(work_item) || !cJSON_IsNumber(rest_item) || !cJSON_IsNumber(warn_item)) {
+                free(buf);
+                cJSON_Delete(root);
+                httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid mode settings");
+                return ESP_FAIL;
+            }
+            schedule.modes[i].id = id_item->valueint;
+            strncpy(schedule.modes[i].name, name_item->valuestring, 31);
+            schedule.modes[i].name[31] = '\0';
+            schedule.modes[i].work_min = work_item->valueint;
+            schedule.modes[i].rest_min = rest_item->valueint;
+            schedule.modes[i].warn_sec = warn_item->valueint;
         }
+    } else {
+        free(buf);
+        cJSON_Delete(root);
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing or invalid modes array");
+        return ESP_FAIL;
     }
 
     // Parse weekly
@@ -222,12 +254,34 @@ static esp_err_t schedule_post_handler(httpd_req_t *req) {
                 if (schedule.weekly[i].count > 8) schedule.weekly[i].count = 8;
                 for (int j = 0; j < schedule.weekly[i].count; j++) {
                     cJSON *block = cJSON_GetArrayItem(day_arr, j);
-                    strncpy(schedule.weekly[i].blocks[j].start, cJSON_GetObjectItem(block, "start")->valuestring, 5);
-                    strncpy(schedule.weekly[i].blocks[j].end, cJSON_GetObjectItem(block, "end")->valuestring, 5);
-                    schedule.weekly[i].blocks[j].mode_id = cJSON_GetObjectItem(block, "mode_id")->valueint;
+                    cJSON *start_item = cJSON_GetObjectItem(block, "start");
+                    cJSON *end_item = cJSON_GetObjectItem(block, "end");
+                    cJSON *mode_id_item = cJSON_GetObjectItem(block, "mode_id");
+
+                    if (!cJSON_IsString(start_item) || !cJSON_IsString(end_item) || !cJSON_IsNumber(mode_id_item)) {
+                        free(buf);
+                        cJSON_Delete(root);
+                        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid schedule blocks");
+                        return ESP_FAIL;
+                    }
+                    strncpy(schedule.weekly[i].blocks[j].start, start_item->valuestring, 5);
+                    schedule.weekly[i].blocks[j].start[5] = '\0';
+                    strncpy(schedule.weekly[i].blocks[j].end, end_item->valuestring, 5);
+                    schedule.weekly[i].blocks[j].end[5] = '\0';
+                    schedule.weekly[i].blocks[j].mode_id = mode_id_item->valueint;
                 }
+            } else {
+                free(buf);
+                cJSON_Delete(root);
+                httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid daily schedule array");
+                return ESP_FAIL;
             }
         }
+    } else {
+        free(buf);
+        cJSON_Delete(root);
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing or invalid weekly array");
+        return ESP_FAIL;
     }
 
     config_mgr_save_schedule(&schedule);
