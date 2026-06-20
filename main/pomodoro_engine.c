@@ -65,6 +65,9 @@ static void update_status_and_notify(void) {
  */
 static void transition_to(focus_state_t new_state) {
     current_status.state = new_state;
+    // Commit statistics to NVS flash on every state transition
+    config_mgr_save_stats(&global_stats);
+    
     switch (new_state) {
         case STATE_WORK:
             current_status.total_sec = global_config.work_time_min * 60;
@@ -125,7 +128,6 @@ static void accumulate_minutes(uint32_t *sec_counter, uint32_t *stat_minutes) {
     if (*sec_counter >= 60) {
         (*stat_minutes)++;
         *sec_counter = 0;
-        config_mgr_save_stats(&global_stats);
     }
 }
 

@@ -21,30 +21,9 @@ static esp_netif_t *ap_netif = NULL;
 
 static void wifi_init_softap(void)
 {
-    if (ap_netif == NULL) {
-        ap_netif = esp_netif_create_default_wifi_ap();
-    }
-
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-
-    wifi_config_t wifi_config = {
-        .ap = {
-            .ssid = "FocusLock_Config",
-            .ssid_len = strlen("FocusLock_Config"),
-            .channel = 1,
-            .password = "",
-            .max_connection = 4,
-            .authmode = WIFI_AUTH_OPEN
-        },
-    };
-
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
     dns_server_start();
     web_server_start();
-
     ESP_LOGI(TAG, "wifi_init_softap finished. SSID:FocusLock_Config");
 }
 
@@ -53,7 +32,6 @@ static void wifi_stop_softap(void)
     web_server_stop();
     dns_server_stop();
     ESP_ERROR_CHECK(esp_wifi_stop());
-    ESP_ERROR_CHECK(esp_wifi_deinit());
     ESP_LOGI(TAG, "wifi_stop_softap finished.");
 }
 
@@ -75,9 +53,28 @@ void network_service_init(void)
 {
     ESP_ERROR_CHECK(esp_netif_init());
 
+    // Register event handler
     ESP_ERROR_CHECK(esp_event_handler_instance_register(POMODORO_EVENTS, 
                                                         POMODORO_EVENT_STATE_UPDATE, 
                                                         &state_update_handler, 
                                                         NULL, 
                                                         NULL));
+
+    // Initialize Wi-Fi stack ONCE at startup
+    ap_netif = esp_netif_create_default_wifi_ap();
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
+    wifi_config_t wifi_config = {
+        .ap = {
+            .ssid = "FocusLock_Config",
+            .ssid_len = strlen("FocusLock_Config"),
+            .channel = 1,
+            .password = "",
+            .max_connection = 4,
+            .authmode = WIFI_AUTH_OPEN
+        },
+    };
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
 }
