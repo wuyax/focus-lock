@@ -4,7 +4,7 @@ This file provides the necessary context for AI agents to develop, build, and de
 
 ## 1. Development Environment
 - **Framework**: ESP-IDF v6.0.1
-- **Hardware**: ESP32-S3 (SDA: GPIO 1, SCL: GPIO 2, LED: GPIO 48, BOOT: GPIO 0)
+- **Hardware**: ESP32-S3 (SDA: GPIO 41, SCL: GPIO 42, LED: GPIO 8, BOOT: GPIO 0)
 - **Target**: `esp32s3`
 
 ## 2. Mandatory Commands
