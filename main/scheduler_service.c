@@ -69,25 +69,37 @@ static void scheduler_task(void *arg) {
     ESP_LOGI(TAG, "Scheduler task started");
     config_mgr_load_schedule(&schedule);
     
-    TickType_t last_wake_time = xTaskGetTickCount();
+    int last_checked_min = -1;
     
     while (1) {
-        // Wait for 1 minute or a reload signal
-        EventBits_t bits = xEventGroupWaitBits(scheduler_event_group, RELOAD_BIT, pdTRUE, pdFALSE, pdMS_TO_TICKS(60000));
+        rtc_time_t now;
+        int current_min_of_day = -1;
+        bool rtc_ok = (rtc_get_time(&now) == ESP_OK);
+        
+        if (rtc_ok) {
+            current_min_of_day = now.hour * 60 + now.minute;
+            if (current_min_of_day != last_checked_min) {
+                check_schedule(now.hour, now.minute, now.weekday);
+                last_checked_min = current_min_of_day;
+            }
+        }
+        
+        // Calculate milliseconds to sleep until the next minute boundary
+        uint32_t delay_ms = 60000;
+        if (rtc_ok) {
+            int sec_remaining = 60 - now.second;
+            if (sec_remaining <= 0) sec_remaining = 60;
+            delay_ms = sec_remaining * 1000;
+        }
+        
+        EventBits_t bits = xEventGroupWaitBits(scheduler_event_group, RELOAD_BIT, pdTRUE, pdFALSE, pdMS_TO_TICKS(delay_ms));
         
         if (bits & RELOAD_BIT) {
             ESP_LOGI(TAG, "Reloading schedule...");
             config_mgr_load_schedule(&schedule);
-            // After reload, we might want to check immediately, but let's wait for next minute for simplicity
+            // Reset checked minute to evaluate newly loaded schedule immediately
+            last_checked_min = -1;
         }
-        
-        rtc_time_t now;
-        if (rtc_get_time(&now) == ESP_OK) {
-            check_schedule(now.hour, now.minute, now.weekday);
-        }
-        
-        // Align to the next minute boundary if possible, but for simplicity just wait 60s
-        // vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(60000));
     }
 }
 

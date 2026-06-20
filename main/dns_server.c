@@ -144,8 +144,7 @@ void dns_server_start(void)
 void dns_server_stop(void)
 {
     if (dns_sock != -1) {
-        // This will cause recvfrom to fail with EBADF
-        close(dns_sock);
-        dns_sock = -1;
+        // Shutdown read/write channels to unblock recvfrom with EBADF/ENOTCONN
+        shutdown(dns_sock, SHUT_RDWR);
     }
 }
