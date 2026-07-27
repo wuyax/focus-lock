@@ -28,46 +28,70 @@ static void usb_hid_task(void *arg) {
     engine_status_t status;
     static focus_state_t last_state = STATE_WORK;
     static uint32_t last_send_time = 0;
+    static bool wake_sent = false;
 
     while (1) {
         if (xQueuePeek(internal_q, &status, portMAX_DELAY)) {
             if (status.state == STATE_REST) {
-                bool should_send = false;
-                
                 if (last_state != STATE_REST) {
-                    should_send = true;
-                    last_send_time = xTaskGetTickCount();
-                } else if (global_config.repeat_lock) {
-                    uint32_t interval_ticks = pdMS_TO_TICKS(global_config.repeat_interval_sec * 1000);
-                    // Ensure a minimum interval of 500ms to avoid flooding
-                    if (interval_ticks < pdMS_TO_TICKS(500)) interval_ticks = pdMS_TO_TICKS(500);
-                    
-                    if ((xTaskGetTickCount() - last_send_time) >= interval_ticks) {
-                        should_send = true;
-                        last_send_time = xTaskGetTickCount();
-                    }
+                    wake_sent = false;
                 }
 
-                if (should_send) {
-                    uint8_t modifier = 0;
-                    uint8_t key = 0;
-
-                    if (parse_shortcut(global_config.lock_shortcut, &modifier, &key)) {
-                        ESP_LOGI(TAG, "Sending lock command (%s)", global_config.lock_shortcut);
+                // Send Esc to wake screen in the final 5 seconds of the rest phase
+                if (status.remaining_sec <= 5) {
+                    if (!wake_sent) {
+                        ESP_LOGI(TAG, "Rest ending in %lu seconds. Sending wake-up command (Esc)", (unsigned long)status.remaining_sec);
                         
-                        // Wait for HID to be ready
                         int retry = 10;
                         while (!tud_hid_ready() && retry-- > 0) {
                             vTaskDelay(pdMS_TO_TICKS(10));
                         }
 
-                        uint8_t keycode[6] = {key, 0, 0, 0, 0, 0};
-                        // Use report_id = 0 as our descriptor doesn't define one
-                        tud_hid_keyboard_report(0, modifier, keycode);
+                        uint8_t keycode[6] = {HID_KEY_ESCAPE, 0, 0, 0, 0, 0};
+                        tud_hid_keyboard_report(0, 0, keycode);
                         vTaskDelay(pdMS_TO_TICKS(100));
                         tud_hid_keyboard_report(0, 0, NULL);
-                    } else {
-                        ESP_LOGE(TAG, "Failed to parse shortcut: %s", global_config.lock_shortcut);
+                        
+                        wake_sent = true;
+                    }
+                } else {
+                    // Send lock command during the rest phase if not in the final 5 seconds
+                    bool should_send = false;
+                    
+                    if (last_state != STATE_REST) {
+                        should_send = true;
+                        last_send_time = xTaskGetTickCount();
+                    } else if (global_config.repeat_lock) {
+                        uint32_t interval_ticks = pdMS_TO_TICKS(global_config.repeat_interval_sec * 1000);
+                        // Ensure a minimum interval of 500ms to avoid flooding
+                        if (interval_ticks < pdMS_TO_TICKS(500)) interval_ticks = pdMS_TO_TICKS(500);
+                        
+                        if ((xTaskGetTickCount() - last_send_time) >= interval_ticks) {
+                            should_send = true;
+                            last_send_time = xTaskGetTickCount();
+                        }
+                    }
+
+                    if (should_send) {
+                        uint8_t modifier = 0;
+                        uint8_t key = 0;
+
+                        if (parse_shortcut(global_config.lock_shortcut, &modifier, &key)) {
+                            ESP_LOGI(TAG, "Sending lock command (%s)", global_config.lock_shortcut);
+                            
+                            // Wait for HID to be ready
+                            int retry = 10;
+                            while (!tud_hid_ready() && retry-- > 0) {
+                                vTaskDelay(pdMS_TO_TICKS(10));
+                            }
+
+                            uint8_t keycode[6] = {key, 0, 0, 0, 0, 0};
+                            tud_hid_keyboard_report(0, modifier, keycode);
+                            vTaskDelay(pdMS_TO_TICKS(100));
+                            tud_hid_keyboard_report(0, 0, NULL);
+                        } else {
+                            ESP_LOGE(TAG, "Failed to parse shortcut: %s", global_config.lock_shortcut);
+                        }
                     }
                 }
             }
