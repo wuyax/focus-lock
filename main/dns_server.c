@@ -109,10 +109,18 @@ static void dns_task(void *pvParameters)
         res_header->ar_count = 0;
 
         int offset = sizeof(dns_header_t);
+        if (len > DNS_MAX_PACKET_SIZE) {
+            ESP_LOGE(TAG, "Received packet size %d exceeds maximum allowed size", len);
+            continue;
+        }
         memcpy(tx_buffer + offset, rx_buffer + offset, len - offset);
         offset += (len - offset);
 
         for (int i = 0; i < ntohs(header->qd_count); i++) {
+            if (offset + sizeof(dns_answer_t) > DNS_MAX_PACKET_SIZE) {
+                ESP_LOGE(TAG, "DNS query too large, truncating answers to prevent buffer overflow");
+                break;
+            }
             dns_answer_t *answer = (dns_answer_t *)(tx_buffer + offset);
             answer->name_ptr = htons(0xC00C); // Pointer to question name
             answer->type = htons(1);          // A record
