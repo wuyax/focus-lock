@@ -49,6 +49,9 @@ static saved_state_context_t pause_backup = { .state = STATE_WORK };
 static uint32_t work_sec_counter = 0;
 static uint32_t rest_sec_counter = 0;
 
+/* Track unsaved minutes to prevent statistics loss while protecting NVS flash endurance */
+static uint32_t unsaved_minutes = 0;
+
 /**
  * @brief Broadcasts the current status via esp_event (consumed by OLED, RGB, etc).
  */
@@ -67,6 +70,7 @@ static void transition_to(focus_state_t new_state) {
     current_status.state = new_state;
     // Commit statistics to NVS flash on every state transition
     config_mgr_save_stats(&global_stats);
+    unsaved_minutes = 0; // Reset unsaved minutes as they are now persisted
     
     switch (new_state) {
         case STATE_WORK:
@@ -128,6 +132,12 @@ static void accumulate_minutes(uint32_t *sec_counter, uint32_t *stat_minutes) {
     if (*sec_counter >= 60) {
         (*stat_minutes)++;
         *sec_counter = 0;
+        
+        unsaved_minutes++;
+        if (unsaved_minutes >= 5) {
+            config_mgr_save_stats(&global_stats);
+            unsaved_minutes = 0;
+        }
     }
 }
 
