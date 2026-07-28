@@ -186,6 +186,18 @@ static esp_err_t schedule_get_handler(httpd_req_t *req) {
 }
 
 static esp_err_t schedule_post_handler(httpd_req_t *req) {
+    if (req->content_len > 4096) {
+        ESP_LOGE(TAG, "Content length too large: %d", req->content_len);
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Payload too large (Max 4KB)");
+        return ESP_FAIL;
+    }
+    
+    // 如果为 0，也是非法的配置提交
+    if (req->content_len == 0) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Empty payload");
+        return ESP_FAIL;
+    }
+
     char *buf = malloc(req->content_len + 1);
     if (!buf) {
         httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Memory allocation failed");
