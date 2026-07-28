@@ -97,8 +97,6 @@ static void scheduler_task(void *arg) {
         if (bits & RELOAD_BIT) {
             ESP_LOGI(TAG, "Reloading schedule...");
             config_mgr_load_schedule(&schedule);
-            // Reset checked minute to evaluate newly loaded schedule immediately
-            last_checked_min = -1;
         }
     }
 }
